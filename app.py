@@ -613,12 +613,12 @@ elif page == "Forecast Sandbox":
         with col_dl1:
             csv_pred = display_df.to_csv(index=False).encode("utf-8")
             st.download_button("📥 Download Predictions CSV", csv_pred,
-                               file_name=f"forecast_{st.session_state.get('forecast_date','')}.csv",
+                               file_name=f"forecast_{primary_model}_{st.session_state.get('forecast_date','')}.csv",
                                mime="text/csv")
         with col_dl2:
             csv_report = report_df.to_csv(index=False).encode("utf-8")
             st.download_button("📥 Download IEX Summary CSV", csv_report,
-                               file_name=f"iex_summary_{st.session_state.get('forecast_date','')}.csv",
+                               file_name=f"iex_summary_{primary_model}_{st.session_state.get('forecast_date','')}.csv",
                                mime="text/csv")
 
         # ---- Exact Tabular Predictions ----
