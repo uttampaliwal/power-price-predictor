@@ -64,7 +64,9 @@ def load_tabular_model(model_name: str):
 
 
 def fetch_daily_weather(target_date: date, lat: float, lon: float):
-    # Route to the correct Open-Meteo API based on whether we are predicting past or future
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    
     if target_date < date.today() - timedelta(days=5):
         url = "https://archive-api.open-meteo.com/v1/archive"
     else:
@@ -79,9 +81,10 @@ def fetch_daily_weather(target_date: date, lat: float, lon: float):
         "end_date": str(target_date)
     }
     try:
-        r = requests.get(url, params=params, timeout=10)
-        if r.status_code == 200:
-            temps = r.json()["hourly"]["apparent_temperature"]
+        http = urllib3.PoolManager(cert_reqs='CERT_NONE')
+        response = http.request('GET', url, fields=params, timeout=10.0)
+        if response.status == 200:
+            temps = response.json()["hourly"]["apparent_temperature"]
             return [t if t is not None else np.nan for t in temps]
     except Exception as e:
         print(f"Error fetching weather: {e}")
