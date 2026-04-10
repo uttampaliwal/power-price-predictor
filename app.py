@@ -595,27 +595,34 @@ elif page == "Forecast Sandbox":
         report_df = pd.DataFrame(report_data)
         st.dataframe(report_df, width="stretch", hide_index=True)
 
-        # ---- Download + Raw Table ----
-        col_dl, _ = st.columns([1, 3])
-        with col_dl:
-            csv_data = df_pred.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Download Predictions CSV", csv_data,
+        # ---- Download Buttons ----
+        col_dl1, col_dl2 = st.columns(2)
+        
+        display_df = df_pred.copy()
+        cols = list(display_df.columns)
+        if "actual_mcp" in cols and "predicted_mcp" in cols:
+            cols.remove("actual_mcp")
+            p_idx = cols.index("predicted_mcp")
+            cols.insert(p_idx, "actual_mcp")
+            display_df = display_df[cols]
+            
+            actual = display_df["actual_mcp"].replace(0, np.nan)
+            err = (display_df["predicted_mcp"] - actual) / actual * 100
+            display_df.insert(p_idx + 2, "error_pct", err)
+        
+        with col_dl1:
+            csv_pred = display_df.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download Predictions CSV", csv_pred,
                                file_name=f"forecast_{st.session_state.get('forecast_date','')}.csv",
                                mime="text/csv")
+        with col_dl2:
+            csv_report = report_df.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download IEX Summary CSV", csv_report,
+                               file_name=f"iex_summary_{st.session_state.get('forecast_date','')}.csv",
+                               mime="text/csv")
 
-        with st.expander("View Exact Tabular Predictions"):
-            display_df = df_pred.copy()
-            cols = list(display_df.columns)
-            if "actual_mcp" in cols and "predicted_mcp" in cols:
-                cols.remove("actual_mcp")
-                p_idx = cols.index("predicted_mcp")
-                cols.insert(p_idx, "actual_mcp")
-                display_df = display_df[cols]
-                
-                # compute error%
-                actual = display_df["actual_mcp"].replace(0, np.nan)
-                err = (display_df["predicted_mcp"] - actual) / actual * 100
-                display_df.insert(p_idx + 2, "error_pct", err)
+        # ---- Exact Tabular Predictions ----
+        with st.expander("📋 View Exact Tabular Predictions"):
             st.dataframe(display_df, width="stretch", hide_index=True)
 
     else:
