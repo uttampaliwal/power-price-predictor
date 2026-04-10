@@ -1,0 +1,2 @@
+model,RMSE,MAE,MAPE,R2,WAPE,AUC_ROC,F1,Precision,Recall,Accuracy
+ridge_no_weather,1124.9489,653.6046,27.9033,0.8054,16.476,0.7903,0.698,0.6684,0.7303,0.8153

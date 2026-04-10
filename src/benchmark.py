@@ -6,6 +6,8 @@ Loads the holdout test predictions from ALL trained models and produces:
   2. predictions/drift_plot.png            — Monthly RMSE trend per model
   3. predictions/model_comparison.png      — Bar chart of all metrics
 
+Supports both WITH WEATHER and WITHOUT WEATHER models.
+
 Usage:
     python src/benchmark.py
 """
@@ -20,16 +22,25 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 from evaluate import compute_all_metrics
-from config import DATA_PROCESSED_DIR, PREDS_DIR, MODELS_DIR, MODEL_LIST
+from config import DATA_PROCESSED_DIR, PREDS_DIR, MODELS_DIR, MODELS_NO_WEATHER_DIR, MODEL_LIST
 import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 DATA_DIR = DATA_PROCESSED_DIR
 MODELS = MODEL_LIST
 
+# No-weather models to also benchmark
+NO_WEATHER_MODELS = ["xgboost", "lightgbm", "random_forest", "ridge"]
 
-def load_predictions(model_name: str) -> pd.DataFrame | None:
-    pred_path = os.path.join(PREDS_DIR, model_name, "test_predictions.csv")
+
+def load_predictions(model_name: str, is_no_weather: bool = False) -> pd.DataFrame | None:
+    """Load holdout test predictions for a model."""
+    if is_no_weather:
+        pred_dir = os.path.join(PREDS_DIR, f"{model_name}_no_weather")
+    else:
+        pred_dir = os.path.join(PREDS_DIR, model_name)
+    
+    pred_path = os.path.join(pred_dir, "test_predictions.csv")
     if not os.path.exists(pred_path):
         print(f"  [SKIP] No predictions found for '{model_name}': {pred_path}")
         return None
@@ -37,9 +48,16 @@ def load_predictions(model_name: str) -> pd.DataFrame | None:
     return df
 
 
-def load_holdout_meta() -> pd.DataFrame:
+def load_holdout_meta(is_no_weather: bool = False) -> pd.DataFrame:
     """Load holdout features for metadata (date, block, season, hour_bucket)."""
-    path = os.path.join(DATA_DIR, "holdout_features.parquet")
+    if is_no_weather:
+        path = os.path.join(DATA_DIR, "holdout_features_no_weather.parquet")
+    else:
+        path = os.path.join(DATA_DIR, "holdout_features.parquet")
+    
+    if not os.path.exists(path):
+        path = os.path.join(DATA_DIR, "holdout_features.parquet")  # fallback
+    
     return pd.read_parquet(path, columns=["date", "block", "time_block",
                                           "mcp_rs_per_mwh", "season", "hour_bucket", "month", "year"])
 
@@ -95,19 +113,40 @@ def comparison_plot(summary: pd.DataFrame, out_path: str, period_str: str):
 
 def run():
     os.makedirs(PREDS_DIR, exist_ok=True)
-    holdout_meta = load_holdout_meta()
+    
+    # Process both with-weather and no-weather models
+    all_model_configs = []
+    
+    # With weather models
+    for model_name in MODELS:
+        pred_df = load_predictions(model_name, is_no_weather=False)
+        if pred_df is not None:
+            all_model_configs.append((model_name, False, pred_df))
+    
+    # Without weather models
+    for model_name in NO_WEATHER_MODELS:
+        pred_df = load_predictions(model_name, is_no_weather=True)
+        if pred_df is not None:
+            all_model_configs.append((model_name, True, pred_df))
+    
+    # Get appropriate holdout meta based on what we have
+    if any(is_nw for _, is_nw, _ in all_model_configs) and not all(is_nw for _, is_nw, _ in all_model_configs):
+        # Mix of both - use weather holdout as primary
+        holdout_meta = load_holdout_meta(False)
+    else:
+        is_no_weather = all_model_configs[0][1] if all_model_configs else False
+        holdout_meta = load_holdout_meta(is_no_weather)
 
     summary_rows = []
     drift_rows   = []
 
-    for model_name in MODELS:
-        pred_df = load_predictions(model_name)
-        if pred_df is None:
-            continue
+    for model_name, is_no_weather, pred_df in all_model_configs:
+        weather_label = "No Weather" if is_no_weather else "Weather"
+        display_name = f"{model_name}_no_weather" if is_no_weather else model_name
 
         # Must have "predicted_mcp" and "mcp_rs_per_mwh" (true) columns
         if "predicted_mcp" not in pred_df.columns:
-            print(f"  [WARN] {model_name}: 'predicted_mcp' column missing, skipping.")
+            print(f"  [WARN] {display_name}: 'predicted_mcp' column missing, skipping.")
             continue
         if "mcp_rs_per_mwh" not in pred_df.columns:
             # Try merging from holdout_meta by date+block
@@ -117,21 +156,23 @@ def run():
                     on=["date", "block"], how="inner",
                 )
             else:
-                print(f"  [WARN] {model_name}: cannot get true values, skipping.")
+                print(f"  [WARN] {display_name}: cannot get true values, skipping.")
                 continue
 
         y_true = pred_df["mcp_rs_per_mwh"].values
         y_pred = pred_df["predicted_mcp"].values
         metrics = compute_all_metrics(y_true, y_pred)
-        summary_rows.append({"model": model_name, **metrics})
-        print(f"  {model_name}: RMSE={metrics.get('RMSE', 'N/A')}  R2={metrics.get('R2', 'N/A')}")
+        metrics["weather"] = "No" if is_no_weather else "Yes"
+        summary_rows.append({"model": display_name, **metrics})
+        print(f"  {model_name} ({weather_label}): RMSE={metrics.get('RMSE', 'N/A')}  R2={metrics.get('R2', 'N/A')}")
 
         # Monthly drift: compute RMSE per year_month
         if "date" in pred_df.columns:
             pred_df["year_month"] = pd.to_datetime(pred_df["date"]).dt.to_period("M").astype(str)
             for ym, grp in pred_df.groupby("year_month"):
                 m = compute_all_metrics(grp["mcp_rs_per_mwh"].values, grp["predicted_mcp"].values)
-                drift_rows.append({"model": model_name, "year_month": ym, **m})
+                m["weather"] = "No" if is_no_weather else "Yes"
+                drift_rows.append({"model": display_name, "year_month": ym, **m})
 
     if not summary_rows:
         print("\n[ERROR] No model predictions found. Run individual model scripts first.")

@@ -1,0 +1,17 @@
+feature,importance
+mcp_lag_1d,0.6760744
+mcp_rolling_7d_mean,0.1305048
+is_weekend,0.042201333
+day_of_week,0.027222002
+hour_bucket,0.0139766615
+day_of_year,0.012857795
+is_holiday,0.01247857
+block,0.012061912
+mcp_lag_7d,0.01193456
+hour,0.010437037
+season,0.010023784
+month,0.009947392
+year,0.008719493
+mcp_rolling_7d_std,0.008534929
+mcp_rolling_30d_std,0.0071733436
+mcp_rolling_30d_mean,0.0058519514

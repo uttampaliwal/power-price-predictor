@@ -14,10 +14,11 @@ DATA_RAW_DIR = os.path.join(DATA_DIR, "raw")
 DATA_PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
 
 MODELS_DIR = os.path.join(BASE_DIR, "models")
+MODELS_NO_WEATHER_DIR = os.path.join(BASE_DIR, "models_no_weather")
 PREDS_DIR = os.path.join(BASE_DIR, "predictions")
 
 # Ensure critical directories exist
-for d in [DATA_RAW_DIR, DATA_PROCESSED_DIR, MODELS_DIR, PREDS_DIR]:
+for d in [DATA_RAW_DIR, DATA_PROCESSED_DIR, MODELS_DIR, MODELS_NO_WEATHER_DIR, PREDS_DIR]:
     os.makedirs(d, exist_ok=True)
     os.makedirs(os.path.join(DATA_RAW_DIR, "training"), exist_ok=True)
     os.makedirs(os.path.join(DATA_RAW_DIR, "holdout"), exist_ok=True)
@@ -32,6 +33,9 @@ CITIES = {
     "delhi": {"lat": 28.6139, "lon": 77.2090},
     "mumbai": {"lat": 19.0760, "lon": 72.8777}
 }
+
+# Weather feature columns to be excluded in no-weather mode
+WEATHER_FEATURE_COLS = ["delhi_apparent_temp", "mumbai_apparent_temp"]
 
 # -----------------------------------------------------------------------------
 # Pipeline Dates

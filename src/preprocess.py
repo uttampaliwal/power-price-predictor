@@ -15,7 +15,7 @@ import glob
 import numpy as np
 import pandas as pd
 import holidays
-from config import DATA_RAW_DIR, DATA_PROCESSED_DIR
+from config import DATA_RAW_DIR, DATA_PROCESSED_DIR, WEATHER_FEATURE_COLS
 import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -143,7 +143,7 @@ def merge_weather_data(df: pd.DataFrame, split: str) -> pd.DataFrame:
 # ────────────────────────────────────────────────────────────────────────────────
 # Main Pipeline
 # ────────────────────────────────────────────────────────────────────────────────
-def run(split: str):
+def run(split: str, include_weather: bool = True):
     df = load_raw_csvs(split)
     df = df.dropna(subset=["date", "mcp_rs_per_mwh"])
     df = df.sort_values(["date", "time_block"]).reset_index(drop=True)
@@ -165,9 +165,25 @@ def run(split: str):
     # df = df.dropna(subset=feature_cols)
     print(f"  (Kept {before} rows. Models will drop the first 7 days internally for training.)")
 
-    out_dir = DATA_PROCESSED_DIR
+    # Remove weather features if include_weather is False
+    if not include_weather:
+        print("  Removing weather features for no-weather version...")
+        cols_to_drop = [col for col in WEATHER_FEATURE_COLS if col in df.columns]
+        if cols_to_drop:
+            df = df.drop(columns=cols_to_drop)
+            print(f"    Dropped columns: {cols_to_drop}")
+
+    # Determine output directory based on include_weather
+    if include_weather:
+        out_dir = DATA_PROCESSED_DIR
+        suffix = ""
+    else:
+        # For no-weather, we'll save to the same directory with _no_weather suffix in filename
+        out_dir = DATA_PROCESSED_DIR
+        suffix = "_no_weather"
+    
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{split}_features.parquet")
+    out_path = os.path.join(out_dir, f"{split}_features{suffix}.parquet")
     df.to_parquet(out_path, index=False)
     print(f"\n[OK] Saved → {out_path}")
     print(f"     Shape: {df.shape}  |  Date range: {df['date'].min().date()} to {df['date'].max().date()}")
@@ -176,5 +192,7 @@ def run(split: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--split", required=True, choices=["training", "holdout"])
+    parser.add_argument("--no-weather", action="store_true", default=False,
+                        help="Exclude weather features (default: False)")
     args = parser.parse_args()
-    run(args.split)
+    run(args.split, not args.no_weather)

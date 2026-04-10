@@ -29,7 +29,7 @@ st.set_page_config(
 )
 
 from config import (
-    DATA_PROCESSED_DIR, DATA_RAW_DIR, MODELS_DIR, PREDS_DIR, SRC_DIR, MODEL_LIST, HOLDOUT_START_DATE
+    DATA_PROCESSED_DIR, DATA_RAW_DIR, MODELS_DIR, MODELS_NO_WEATHER_DIR, PREDS_DIR, SRC_DIR, MODEL_LIST, HOLDOUT_START_DATE
 )
 
 # Overwrite config for specific needs in dashboard if necessary
@@ -152,18 +152,36 @@ def load_historical_data():
 
 @st.cache_data
 def load_all_model_metrics():
-    """Read metrics.csv from every trained model directory."""
+    """Read metrics.csv from every trained model directory (both with and without weather)."""
     rows = []
+    
+    # Models WITH weather
     for m in MODEL_LIST:
         p = os.path.join(MODELS_DIR, m, "metrics.csv")
         if os.path.exists(p):
             row = pd.read_csv(p).iloc[0].to_dict()
+            row["weather"] = "Yes"
             rows.append(row)
+    
+    # Models WITHOUT weather
+    no_weather_models = ["xgboost", "lightgbm", "random_forest", "ridge"]
+    for m in no_weather_models:
+        p = os.path.join(MODELS_NO_WEATHER_DIR, m, "metrics.csv")
+        if os.path.exists(p):
+            row = pd.read_csv(p).iloc[0].to_dict()
+            row["weather"] = "No"
+            rows.append(row)
+    
     return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 @st.cache_data
-def load_feature_importance(model_name="xgboost"):
-    p = os.path.join(MODELS_DIR, model_name, "feature_importance.csv")
+def load_feature_importance(model_name="xgboost", include_weather=True):
+    """Load feature importance for a specific model and weather configuration."""
+    if include_weather:
+        base_dir = MODELS_DIR
+    else:
+        base_dir = MODELS_NO_WEATHER_DIR
+    p = os.path.join(base_dir, model_name, "feature_importance.csv")
     if os.path.exists(p):
         return pd.read_csv(p).sort_values("importance", ascending=False)
     return pd.DataFrame()
@@ -641,19 +659,138 @@ elif page == "Model Scorecard":
     if metrics_df.empty:
         st.warning("No model metrics found. Train models first.")
     else:
+        # --- Weather Filter ---
+        st.subheader("🔍 Weather Feature Analysis")
+        weather_filter = st.radio(
+            "Filter by Weather Configuration:",
+            ["All Models", "With Weather", "Without Weather"],
+            horizontal=True
+        )
+        
+        if weather_filter == "With Weather":
+            filtered_df = metrics_df[metrics_df["weather"] == "Yes"]
+        elif weather_filter == "Without Weather":
+            filtered_df = metrics_df[metrics_df["weather"] == "No"]
+        else:
+            filtered_df = metrics_df
+        
         # --- Comparison Table ---
         st.subheader("Holdout Performance")
-        display_cols = ["model", "R2", "WAPE", "RMSE", "MAE", "MAPE", "AUC_ROC", "Accuracy"]
-        avail_cols = [c for c in display_cols if c in metrics_df.columns]
-        styled = metrics_df[avail_cols].copy()
+        display_cols = ["model", "weather", "R2", "WAPE", "RMSE", "MAE", "MAPE", "AUC_ROC", "Accuracy"]
+        avail_cols = [c for c in display_cols if c in filtered_df.columns]
+        styled = filtered_df[avail_cols].copy()
         styled["model"] = styled["model"].str.replace("_", " ").str.title()
+        
+        # Color code weather column
+        def weather_color(val):
+            if val == "Yes":
+                return "🟢 Yes"
+            elif val == "No":
+                return "🔴 No"
+            return val
+        if "weather" in styled.columns:
+            styled["weather"] = styled["weather"].apply(weather_color)
+        
         st.dataframe(styled, width="stretch", hide_index=True)
 
-        # --- Bar charts ---
+        # --- Weather Impact Comparison (only when showing all models) ---
+        if weather_filter == "All Models" and "weather" in metrics_df.columns:
+            st.markdown("### 📊 Weather Impact Analysis")
+            
+            # Get base model names
+            base_models = ["xgboost", "lightgbm", "random_forest", "ridge"]
+            
+            comparison_data = []
+            for model in base_models:
+                with_weather = metrics_df[(metrics_df["model"] == model) & (metrics_df["weather"] == "Yes")]
+                without_weather = metrics_df[(metrics_df["model"] == f"{model}_no_weather") & (metrics_df["weather"] == "No")]
+                
+                if not with_weather.empty and not without_weather.empty:
+                    w_r2 = with_weather["R2"].iloc[0]
+                    wo_r2 = without_weather["R2"].iloc[0]
+                    w_wape = with_weather["WAPE"].iloc[0]
+                    wo_wape = without_weather["WAPE"].iloc[0]
+                    
+                    r2_diff = w_r2 - wo_r2
+                    wape_diff = w_wape - wo_wape  # negative is better for WAPE
+                    
+                    comparison_data.append({
+                        "Model": model.replace("_", " ").title(),
+                        "R² (Weather)": w_r2,
+                        "R² (No Weather)": wo_r2,
+                        "R² Δ": r2_diff,
+                        "WAPE (Weather)": w_wape,
+                        "WAPE (No Weather)": wo_wape,
+                        "WAPE Δ": wape_diff,
+                    })
+            
+            if comparison_data:
+                comp_df = pd.DataFrame(comparison_data)
+                
+                # Display comparison
+                st.dataframe(comp_df, width="stretch", hide_index=True)
+                
+                # Visual comparison
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("#### R² Comparison")
+                    fig_r2_comp = go.Figure()
+                    models = comp_df["Model"].tolist()
+                    fig_r2_comp.add_trace(go.Bar(
+                        name="With Weather",
+                        x=models,
+                        y=comp_df["R² (Weather)"],
+                        marker_color="#10B981"
+                    ))
+                    fig_r2_comp.add_trace(go.Bar(
+                        name="Without Weather",
+                        x=models,
+                        y=comp_df["R² (No Weather)"],
+                        marker_color="#EF4444"
+                    ))
+                    fig_r2_comp.update_layout(
+                        barmode="group", height=350,
+                        yaxis_title="R² (Higher is Better)",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+                    )
+                    st.plotly_chart(fig_r2_comp, width="stretch")
+                
+                with c2:
+                    st.markdown("#### WAPE Comparison")
+                    fig_wape_comp = go.Figure()
+                    fig_wape_comp.add_trace(go.Bar(
+                        name="With Weather",
+                        x=models,
+                        y=comp_df["WAPE (Weather)"],
+                        marker_color="#10B981"
+                    ))
+                    fig_wape_comp.add_trace(go.Bar(
+                        name="Without Weather",
+                        x=models,
+                        y=comp_df["WAPE (No Weather)"],
+                        marker_color="#EF4444"
+                    ))
+                    fig_wape_comp.update_layout(
+                        barmode="group", height=350,
+                        yaxis_title="WAPE % (Lower is Better)",
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+                    )
+                    st.plotly_chart(fig_wape_comp, width="stretch")
+                
+                # Summary
+                st.markdown("#### 📋 Summary")
+                improved = comp_df[comp_df["R² Δ"] > 0]
+                degraded = comp_df[comp_df["R² Δ"] < 0]
+                if not improved.empty:
+                    st.success(f"✅ Weather improved R² for: {', '.join(improved['Model'].tolist())}")
+                if not degraded.empty:
+                    st.warning(f"⚠️ Weather reduced R² for: {', '.join(degraded['Model'].tolist())}")
+                
+        # --- Bar charts (filtered) ---
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("#### R² Score (Higher is Better)")
-            fig_r2 = px.bar(metrics_df.sort_values("R2", ascending=True),
+            fig_r2 = px.bar(filtered_df.sort_values("R2", ascending=True),
                             x="R2", y="model", orientation="h",
                             color="R2", color_continuous_scale="Blues",
                             text_auto=".4f")
@@ -663,7 +800,7 @@ elif page == "Model Scorecard":
 
         with c2:
             st.markdown("#### WAPE % (Lower is Better)")
-            fig_wape = px.bar(metrics_df.sort_values("WAPE", ascending=False),
+            fig_wape = px.bar(filtered_df.sort_values("WAPE", ascending=False),
                               x="WAPE", y="model", orientation="h",
                               color="WAPE", color_continuous_scale="Reds_r",
                               text_auto=".2f")
@@ -675,13 +812,53 @@ elif page == "Model Scorecard":
 
         # --- Feature Importance ---
         st.subheader("🧬 Feature Importance")
-        available_models = [c for c in metrics_df['model'].tolist() if os.path.exists(os.path.join(MODELS_DIR, c, "feature_importance.csv"))]
+        
+        # Model selection based on filter
+        if weather_filter == "With Weather":
+            available_models = [c for c in metrics_df[metrics_df["weather"] == "Yes"]['model'].tolist() 
+                               if os.path.exists(os.path.join(MODELS_DIR, c, "feature_importance.csv"))]
+        elif weather_filter == "Without Weather":
+            available_models = [c.replace("_no_weather", "") for c in metrics_df[metrics_df["weather"] == "No"]['model'].tolist()]
+            available_models = [m for m in available_models 
+                               if os.path.exists(os.path.join(MODELS_NO_WEATHER_DIR, m, "feature_importance.csv"))]
+        else:
+            # Show both
+            available_with = [c for c in metrics_df[metrics_df["weather"] == "Yes"]['model'].tolist() 
+                             if os.path.exists(os.path.join(MODELS_DIR, c, "feature_importance.csv"))]
+            available_without = [c.replace("_no_weather", "") for c in metrics_df[metrics_df["weather"] == "No"]['model'].tolist()]
+            available_without = [m for m in available_without 
+                                if os.path.exists(os.path.join(MODELS_NO_WEATHER_DIR, m, "feature_importance.csv"))]
+            available_models = available_with + available_without
         
         if not available_models:
             st.warning("No feature importance files found for trained models.")
         else:
-            fi_model = st.selectbox("Select Model for Feature Importance", available_models)
-            fi = load_feature_importance(fi_model)
+            # Model selection with weather indicator
+            model_options = []
+            for m in available_models:
+                weather_path = os.path.join(MODELS_DIR, m, "feature_importance.csv")
+                no_weather_path = os.path.join(MODELS_NO_WEATHER_DIR, m, "feature_importance.csv")
+                if os.path.exists(weather_path) and os.path.exists(no_weather_path):
+                    model_options.append(f"{m} (Both)")
+                elif os.path.exists(weather_path):
+                    model_options.append(f"{m} (Weather)")
+                elif os.path.exists(no_weather_path):
+                    model_options.append(f"{m} (No Weather)")
+            
+            selected_model = st.selectbox("Select Model for Feature Importance", model_options)
+            
+            # Determine if we show with or without weather
+            base_model = selected_model.split(" (")[0]
+            if "(Both)" in selected_model:
+                # Let user choose which version
+                weather_choice = st.radio("Weather Configuration:", ["With Weather", "Without Weather"], horizontal=True)
+                include_weather = (weather_choice == "With Weather")
+            elif "(Weather)" in selected_model:
+                include_weather = True
+            else:
+                include_weather = False
+            
+            fi = load_feature_importance(base_model, include_weather)
             if not fi.empty:
                 fi_top = fi.head(12)
                 fig_fi = px.bar(fi_top.iloc[::-1], x="importance", y="feature", orientation="h",
@@ -692,14 +869,15 @@ elif page == "Model Scorecard":
                                      xaxis_title="Gain / Importance")
                 st.plotly_chart(fig_fi, width="stretch")
     
-                # Highlight weather features
-                weather_feats = fi[fi["feature"].str.contains("temp", case=False, na=False)]
-                if not weather_feats.empty:
-                    total_imp = fi["importance"].sum()
-                    weather_pct = weather_feats["importance"].sum() / total_imp * 100
-                    st.info(f"🌡️ **Weather features** contribute **{weather_pct:.1f}%** of total model importance for {fi_model.replace('_', ' ').title()}.")
+                # Highlight weather features if showing weather model
+                if include_weather:
+                    weather_feats = fi[fi["feature"].str.contains("temp", case=False, na=False)]
+                    if not weather_feats.empty:
+                        total_imp = fi["importance"].sum()
+                        weather_pct = weather_feats["importance"].sum() / total_imp * 100
+                        st.info(f"🌡️ **Weather features** contribute **{weather_pct:.1f}%** of total model importance for {base_model.replace('_', ' ').title()}.")
             else:
-                st.warning(f"Feature importance file is empty for {fi_model}.")
+                st.warning(f"Feature importance file is empty for {base_model}.")
 
 
 # =============================================================================
@@ -813,18 +991,28 @@ elif page == "Data Management":
     st.markdown("---")
     st.subheader("🔄 Processing Center")
     st.caption("Regenerate all feature Parquet files from raw CSVs. Use this after fixing preprocessing logic.")
+
+    # Weather configuration for preprocessing
+    col_weather_1, col_weather_2 = st.columns([1, 2])
+    with col_weather_1:
+        include_weather = st.toggle("Include Weather Features", value=True, key="include_weather_toggle")
+    
     if st.button("🚀 Refresh All Features", key="btn_refresh_all"):
         python = sys.executable
-        with st.status("Refreshing all features...", expanded=True) as status:
+        weather_label = "with Weather" if include_weather else "without Weather"
+        with st.status(f"Refreshing all features ({weather_label})...", expanded=True) as status:
             for split in ["training", "holdout"]:
-                st.write(f"Processing **{split}** features...")
-                ok = _run_pipeline_cmd([python, os.path.join(SRC_DIR, "preprocess.py"), "--split", split], st)
+                st.write(f"Processing **{split}** features ({weather_label})...")
+                cmd = [python, os.path.join(SRC_DIR, "preprocess.py"), "--split", split]
+                if not include_weather:
+                    cmd.append("--no-weather")
+                ok = _run_pipeline_cmd(cmd, st)
                 if not ok:
                     status.update(label=f"❌ Failed during {split} preprocessing", state="error")
                     st.stop()
             status.update(label="✅ All features refreshed!", state="complete")
         st.cache_data.clear()
-        st.success("Feature parquets updated successfully!")
+        st.success(f"Feature parquets updated successfully ({weather_label})!")
 
     st.markdown("---")
 
@@ -937,13 +1125,26 @@ elif page == "Data Management":
     # ─────────────────────────────────────────────────────────────────────────
     # Section 3: Train Models
     # ─────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
     st.subheader("🧠 Train Models")
     st.caption("Retrain models using the current training + holdout data.")
 
+    # Weather configuration for model training
+    col_train_weather_1, col_train_weather_2 = st.columns([1, 2])
+    with col_train_weather_1:
+        train_with_weather = st.toggle("Train WITH Weather Features", value=True, key="train_weather_toggle")
+    
+    if train_with_weather:
+        model_label = "With Weather"
+        available_models = [m for m in ALL_TRAINABLE_MODELS if m in ["xgboost", "lightgbm", "random_forest", "ridge"]]
+    else:
+        model_label = "Without Weather"
+        available_models = ["xgboost", "lightgbm", "random_forest", "ridge"]
+    
     selected_train_models = st.multiselect(
-        "Select models to train",
-        ALL_TRAINABLE_MODELS,
-        default=["xgboost", "lightgbm"],
+        f"Select models to train ({model_label})",
+        available_models,
+        default=[available_models[0]] if available_models else None,
         key="train_model_select",
     )
 
@@ -953,14 +1154,19 @@ elif page == "Data Management":
         else:
             python = sys.executable
             for model_name in selected_train_models:
-                with st.status(f"Training {model_name}...", expanded=True) as status:
-                    script = os.path.join(SRC_DIR, "models", f"{model_name}_model.py")
+                with st.status(f"Training {model_name} ({model_label})...", expanded=True) as status:
+                    if train_with_weather:
+                        script = os.path.join(SRC_DIR, "models", f"{model_name}_model.py")
+                    else:
+                        script = os.path.join(SRC_DIR, "models", f"{model_name}_no_weather_model.py")
+                    
                     if not os.path.exists(script):
-                        status.update(label=f"❌ Script not found: {model_name}_model.py", state="error")
+                        status.update(label=f"❌ Script not found: {os.path.basename(script)}", state="error")
                         continue
+                    
                     ok = _run_pipeline_cmd([python, script], st)
                     if ok:
-                        status.update(label=f"✅ {model_name} trained!", state="complete")
+                        status.update(label=f"✅ {model_name} trained! ({model_label})", state="complete")
                     else:
                         status.update(label=f"❌ {model_name} training failed", state="error")
 
