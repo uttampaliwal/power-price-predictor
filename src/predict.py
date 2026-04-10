@@ -20,7 +20,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import joblib
-import requests
 import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
