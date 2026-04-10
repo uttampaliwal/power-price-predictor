@@ -11,7 +11,7 @@ import subprocess
 import shutil
 from datetime import date, timedelta
 import joblib
-import requests
+import urllib3
 
 # Ensure the src module can be imported
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
@@ -171,18 +171,28 @@ def load_feature_importance(model_name="xgboost"):
 def fetch_live_weather(lat, lon):
     """Fetch both actual and apparent (feels-like) temperature for a city."""
     try:
-        r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+        http = urllib3.PoolManager(cert_reqs='CERT_NONE')
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
             "latitude": lat, "longitude": lon,
             "current": "temperature_2m,apparent_temperature",
             "timezone": "Asia/Kolkata"
-        }, timeout=5)
-        if r.status_code == 200:
-            current = r.json().get("current", {})
+        }
+        response = http.request('GET', url, fields=params, timeout=10.0)
+        
+        if response.status == 200:
+            data = response.json()
+            current = data.get("current", {})
             actual = current.get("temperature_2m")
             apparent = current.get("apparent_temperature")
             return actual, apparent
-    except Exception:
-        pass
+        else:
+            print(f"Weather API error: status {response.status}")
+    except Exception as e:
+        print(f"Weather fetch error: {e}")
     return None, None
 
 # -----------------------------------------------------------------------------
