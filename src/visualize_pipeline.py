@@ -83,7 +83,7 @@ def create_report():
     html_content.append("<div class='card'><h2>2. Model Metrics Comparison</h2>")
     if not df_metrics.empty:
         # Reorder columns
-        cols = ['Model', 'RMSE', 'MAE', 'MAPE', 'WAPE', 'R2', 'AUC_ROC', 'F1', 'Precision', 'Recall', 'Accuracy']
+        cols = ['Model', 'RMSE', 'MAE', 'MAPE', 'WAPE', 'R2', 'AUC_ROC', 'F1']
         df_m = df_metrics[[c for c in cols if c in df_metrics.columns]]
         html_content.append(df_m.to_html(classes='metric-table', index=False, float_format="%.4f"))
     html_content.append("</div>")
@@ -93,7 +93,7 @@ def create_report():
     if not df_metrics.empty:
         html_content.append("<div class='card'><h2>3. Graphical Performance Summary</h2>")
         
-        fig_comp = make_subplots(rows=2, cols=2, subplot_titles=("RMSE (Lower is better)", "WAPE (Lower is better)", "R² Score (Higher is better)", "Accuracy (Higher is better)"))
+        fig_comp = make_subplots(rows=2, cols=2, subplot_titles=("RMSE (Lower is better)", "WAPE (Lower is better)", "R² Score (Higher is better)", "F1 Score (Higher is better)"))
         
         # Sort by RMSE
         df_rmse = df_metrics.sort_values("RMSE")
@@ -107,9 +107,9 @@ def create_report():
         df_r2 = df_metrics.sort_values("R2", ascending=False)
         fig_comp.add_trace(go.Bar(x=df_r2["Model"], y=df_r2["R2"], marker_color='#10B981', showlegend=False), row=2, col=1)
         
-        # Sort by Accuracy
-        df_acc = df_metrics.sort_values("Accuracy", ascending=False)
-        fig_comp.add_trace(go.Bar(x=df_acc["Model"], y=df_acc["Accuracy"], marker_color='#3B82F6', showlegend=False), row=2, col=2)
+        # Sort by F1
+        df_f1 = df_metrics.sort_values("F1", ascending=False)
+        fig_comp.add_trace(go.Bar(x=df_f1["Model"], y=df_f1["F1"], marker_color='#3B82F6', showlegend=False), row=2, col=2)
         
         fig_comp.update_layout(height=700, template="plotly_white")
         html_content.append(fig_comp.to_html(full_html=False, include_plotlyjs=False))

@@ -1,0 +1,112 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+MANIFEST
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+*.egg-info/
+.eggs
+*.manifest
+*.spec
+*.py, cover, Cython Debug Files
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+*.cover
+*.py, C, C++
+
+# IPython
+.ipython/
+profile_default/
+ipython_config.py
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+.Vs DEBUG
+*.log
+logs/
+*.pot
+*.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
+
+# Project-specific: Data (Large files - use Git LFS if needed)
+data/
+*.csv
+*.parquet
+*.xlsx
+*.xls
+
+# Project-specific: Models (Large files)
+models/
+models_no_weather/
+predictions/
+
+# PowerBI data (exported CSVs)
+powerbi_data/
+
+# Presentation files
+*.pptx
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.ico
+*.tiff
+*.tif
+
+# Temp files
+temp_pptx/
+temp_pptx2/
+temp_pptx_extract/
+*.tmp
+*~
+
+# Compiled files
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.exe
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Custom excludes
+project.pdf
+IEX_Power_Price_Prediction*.pptx
+IEX_Learning_Summary.pptx
+PROJECT_LEARNING_SUMMARY.md
+presentation_slides.html
+create_*.py
+output/

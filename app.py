@@ -676,7 +676,7 @@ elif page == "Model Scorecard":
         
         # --- Comparison Table ---
         st.subheader("Holdout Performance")
-        display_cols = ["model", "weather", "R2", "WAPE", "RMSE", "MAE", "MAPE", "AUC_ROC", "Accuracy"]
+        display_cols = ["model", "weather", "R2", "WAPE", "RMSE", "MAE", "MAPE", "AUC_ROC", "F1"]
         avail_cols = [c for c in display_cols if c in filtered_df.columns]
         styled = filtered_df[avail_cols].copy()
         styled["model"] = styled["model"].str.replace("_", " ").str.title()
@@ -916,7 +916,7 @@ elif page == "Data Management":
     def _run_pipeline_cmd(cmd: list[str], status_container):
         """Run a command, streaming output to a Streamlit status container."""
         result = subprocess.run(
-            cmd, capture_output=True, text=True,
+            cmd, capture_output=True, text=True, encoding='utf-8', errors='replace',
             cwd=os.path.dirname(__file__)
         )
         if result.stdout:
@@ -1194,6 +1194,29 @@ elif page == "Data Management":
 
         st.cache_data.clear()
         st.success("Benchmark updated! Check the **Model Scorecard** page.")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Section 5: Power BI Export
+    # ─────────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.subheader("📊 Power BI Export")
+    st.caption("Export data to CSV files for Power BI dashboard. Run after training or fetching new data.")
+
+    col_pb1, col_pb2 = st.columns([2, 1])
+    with col_pb1:
+        st.info("💡 Export generates CSV files in `powerbi_data/` folder for Power BI import.")
+    with col_pb2:
+        if st.button("📥 Export to Power BI", key="btn_powerbi_export"):
+            python = sys.executable
+            with st.status("Exporting data for Power BI...", expanded=True) as status:
+                ok = _run_pipeline_cmd(
+                    [python, os.path.join(SRC_DIR, "powerbi_exporter.py")], st
+                )
+                if ok:
+                    status.update(label="✅ Export complete!", state="complete")
+                    st.success("Data exported to `powerbi_data/` folder!")
+                else:
+                    status.update(label="❌ Export failed", state="error")
 
     st.markdown("---")
 

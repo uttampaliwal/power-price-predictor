@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import (
     mean_squared_error, mean_absolute_error,
-    roc_auc_score, f1_score, precision_score, recall_score, accuracy_score,
+    roc_auc_score, f1_score,
 )
 import sys
 sys.stdout.reconfigure(encoding="utf-8")
@@ -77,7 +77,7 @@ def price_direction(series: np.ndarray, threshold_pct: float = 1.0) -> np.ndarra
 
 def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     """
-    Compute AUC-ROC, F1, Precision, Recall, Accuracy for price direction
+    Compute AUC-ROC and F1 for price direction
     (up vs not-up, ≥1% change threshold).
 
     Parameters:
@@ -96,7 +96,7 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
     true_dir, pred_dir = true_dir[mask], pred_dir[mask]
 
     if len(np.unique(true_dir)) < 2:
-        return {m: np.nan for m in ["AUC_ROC", "F1", "Precision", "Recall", "Accuracy"]}
+        return {m: np.nan for m in ["AUC_ROC", "F1"]}
 
     try:
         auc = roc_auc_score(true_dir, pred_dir)
@@ -104,11 +104,8 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
         auc = np.nan
 
     return {
-        "AUC_ROC":   round(auc, 4),
-        "F1":        round(f1_score(true_dir, pred_dir, zero_division=0), 4),
-        "Precision": round(precision_score(true_dir, pred_dir, zero_division=0), 4),
-        "Recall":    round(recall_score(true_dir, pred_dir, zero_division=0), 4),
-        "Accuracy":  round(accuracy_score(true_dir, pred_dir), 4),
+        "AUC_ROC": round(auc, 4),
+        "F1":      round(f1_score(true_dir, pred_dir, zero_division=0), 4),
     }
 
 
