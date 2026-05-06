@@ -1,2 +1,0 @@
-model,RMSE,MAE,MAPE,R2,WAPE,AUC_ROC,F1,Precision,Recall,Accuracy
-lightgbm_no_weather,950.6148,547.3161,26.6714,0.8611,13.7967,0.7791,0.6821,0.6489,0.7189,0.8041

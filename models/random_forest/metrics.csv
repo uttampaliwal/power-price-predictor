@@ -1,2 +1,0 @@
-model,RMSE,MAE,MAPE,R2,WAPE,AUC_ROC,F1,Precision,Recall,Accuracy
-random_forest,970.7019,553.0806,25.617,0.8551,13.942,0.7424,0.6322,0.5945,0.675,0.7704

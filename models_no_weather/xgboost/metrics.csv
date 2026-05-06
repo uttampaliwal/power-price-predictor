@@ -1,2 +1,0 @@
-model,RMSE,MAE,MAPE,R2,WAPE,AUC_ROC,F1,Precision,Recall,Accuracy
-xgboost_no_weather,949.1383,541.4706,26.3361,0.8615,13.6494,0.7756,0.6777,0.6475,0.7109,0.8024
