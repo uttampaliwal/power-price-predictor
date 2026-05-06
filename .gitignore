@@ -1,0 +1,86 @@
+# ==========
+# Python
+# ==========
+# Byte-compiled / optimized
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*$py.class
+
+# Package / distribution
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Cython / C++
+*.so
+*.dll
+*.exe
+
+# ==========
+# Project-Specific: Presentations & Outputs
+# ==========
+# Presentation files
+*.pptx
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.ico
+*.tiff
+*.tif
+
+# Temp / output files
+temp_pptx/
+temp_pptx2/
+temp_pptx_extract/
+*.tmp
+output/
+*.log
+logs/
+
+# ==========
+# Streamlit
+# ==========
+.streamlit/
+
+# ==========
+# Custom Excludes
+# ==========
+project.pdf
+IEX_Power_Price_Prediction*.pptx
+IEX_Learning_Summary.pptx
+PROJECT_LEARNING_SUMMARY.md
+presentation_slides.html
+create_*.py
