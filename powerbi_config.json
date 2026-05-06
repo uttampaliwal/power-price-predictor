@@ -1,0 +1,40 @@
+{
+    "powerbi_settings": {
+        "export_path": "powerbi_data",
+        "auto_refresh": false,
+        "refresh_after_fetch": true,
+        "refresh_after_preprocess": true,
+        "refresh_after_train": true,
+        "refresh_after_benchmark": true
+    },
+    "data_sources": {
+        "model_metrics": {
+            "file": "model_metrics.csv",
+            "key_columns": ["model", "weather"],
+            "update_frequency": "after_training"
+        },
+        "predictions": {
+            "file": "predictions.csv", 
+            "key_columns": ["date", "block", "model"],
+            "update_frequency": "after_training"
+        },
+        "daily_prices": {
+            "file": "daily_prices.csv",
+            "key_columns": ["date", "block"],
+            "update_frequency": "daily"
+        },
+        "weather_impact": {
+            "file": "weather_impact_comparison.csv",
+            "key_columns": ["model"],
+            "update_frequency": "after_training"
+        }
+    },
+    "recommended_refresh_workflow": [
+        "1. Fetch new data: python src/fetch_data.py",
+        "2. Run preprocessing: python src/preprocess.py", 
+        "3. Train models: python src/models/xgboost_model.py (etc)",
+        "4. Run benchmark: python src/benchmark.py",
+        "5. Export to Power BI: python src/powerbi_exporter.py",
+        "6. Refresh Power BI dataset"
+    ]
+}
