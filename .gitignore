@@ -51,7 +51,7 @@ htmlcov/
 # ==========
 # Presentation files
 *.pptx
-*.pdf
+# *.pdf
 *.png
 *.jpg
 *.jpeg
@@ -87,4 +87,5 @@ models/
 models_no_weather/
 predictions/
 powerbi_data/
+paper/
 *.lock
