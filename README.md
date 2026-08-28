@@ -106,8 +106,8 @@
 2. FEATURE ENGINEERING (src/preprocess.py)
    ┌─────────────────────────────────────────────┐
    │  • Time features: hour, day, month, season  │
-   │  • Lag features: 1-block, 1-hour, 1-day     │
-   │  • Demand-supply: bid ratio, net demand    │
+   │  • Lag features: 1-day, 7-day (per block)  │
+   │  • Rolling stats: 7d & 30d mean/std        │
    │  • Weather: Delhi & Mumbai temperatures   │
    │  • Calendar: holidays, peak hours          │
    └────────────────────┬────────────────────────┘

@@ -44,25 +44,25 @@ class TestRegressionMetrics:
 
 class TestClassificationMetrics:
     def test_price_direction(self):
-        prices = np.array([100, 110, 105, 120, 90], dtype=float)
+        # 96 blocks per day — direction is relative to same block yesterday
+        prices = np.zeros(192, dtype=float)
+        prices[:96] = 100  # day 1
+        prices[96:] = 110  # day 2 (10% rise)
         d = price_direction(prices, threshold_pct=1.0)
-        assert d[0] == 0
-        assert d[1] == 1
-        assert d[2] == 0
-        assert d[3] == 1
-        assert d[4] == 0
+        assert d[:96].sum() == 0  # first day: no prior day
+        assert d[96:].sum() == 96  # second day: all UP
 
     def test_direction_single_class(self):
-        y = np.array([100, 100, 100, 100], dtype=float)
+        y = np.zeros(200, dtype=float)
         m = compute_classification_metrics(y, y)
-        assert all(np.isnan(v) for v in m.values())
+        assert all(np.isnan(v) for v in [m["AUC_ROC"], m["F1"]])
 
 
 class TestAllMetrics:
     def test_returns_all_keys(self):
-        y = np.array([100, 200, 300, 400, 500], dtype=float)
+        y = np.array([100, 200, 300, 400, 500] * 20, dtype=float)
         m = compute_all_metrics(y, y)
-        expected = {"RMSE", "MAE", "MAPE", "R2", "WAPE", "AUC_ROC", "F1"}
+        expected = {"RMSE", "MAE", "MAPE", "R2", "WAPE", "AUC_ROC", "F1", "Dir_Accuracy"}
         assert set(m.keys()) == expected
 
 

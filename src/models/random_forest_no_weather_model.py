@@ -55,7 +55,7 @@ def run():
 
     model = RandomForestRegressor(
         n_estimators=300,
-        max_depth=20,
+        max_depth=None,
         min_samples_leaf=5,
         n_jobs=-1,
         random_state=42,

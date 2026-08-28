@@ -23,9 +23,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from evaluate import compute_all_metrics
 from config import DATA_PROCESSED_DIR, PREDS_DIR, MODELS_DIR, MODELS_NO_WEATHER_DIR, MODEL_LIST
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
-
 DATA_DIR = DATA_PROCESSED_DIR
 MODELS = MODEL_LIST
 

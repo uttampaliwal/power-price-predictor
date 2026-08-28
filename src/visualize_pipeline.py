@@ -12,9 +12,6 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from sklearn.metrics import confusion_matrix
 import evaluate
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
-
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "predictions")
 MODELS = ["naive", "ridge", "random_forest", "xgboost", "lightgbm"]

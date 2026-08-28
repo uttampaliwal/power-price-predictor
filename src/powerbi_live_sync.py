@@ -18,9 +18,6 @@ import pandas as pd
 import glob
 from datetime import datetime
 from config import DATA_RAW_DIR, DATA_PROCESSED_DIR, MODELS_DIR, MODELS_NO_WEATHER_DIR, PREDS_DIR
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
-
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "powerbi_data")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

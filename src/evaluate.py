@@ -18,8 +18,9 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error,
     roc_auc_score, f1_score,
 )
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
+
+
+BLOCKS_PER_DAY = 96
 
 
 # Regression Metrics
@@ -66,28 +67,41 @@ def compute_regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
 def price_direction(series: np.ndarray, threshold_pct: float = 1.0) -> np.ndarray:
     """
-    Convert price series to binary direction labels relative to previous day same block.
-    1 = price went UP by ≥ threshold_pct %, 0 = DOWN or flat.
+    Convert price series to binary direction labels relative to same block yesterday.
+
+    z_i = 1[y_i - y_{i-96}] >= threshold_pct %
+
+    For the first 96 elements (first day), direction is set to 0 (no prior day).
+
+    Parameters:
+        series:        time-ordered price array (96 blocks per day)
+        threshold_pct: minimum % rise to label as "UP" (default 1.0)
+
+    Returns: binary array where 1 = UP, 0 = DOWN or FLAT
     """
     series = np.asarray(series, dtype=float)
     direction = np.zeros(len(series), dtype=int)
-    direction[1:] = ((series[1:] - series[:-1]) / np.abs(series[:-1] + 1e-9) * 100 >= threshold_pct).astype(int)
+    if len(series) > BLOCKS_PER_DAY:
+        ref = series[:-BLOCKS_PER_DAY]
+        curr = series[BLOCKS_PER_DAY:]
+        pct_change = (curr - ref) / np.abs(ref + 1e-9) * 100
+        direction[BLOCKS_PER_DAY:] = (pct_change >= threshold_pct).astype(int)
     return direction
 
 
 def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    
     """
-    Compute AUC-ROC and F1 for price direction
-    (up vs not-up, ≥1% change threshold).
+    Compute AUC-ROC, F1, and Direction Accuracy for price direction
+    (up vs not-up, >=1% day-over-day change at same block).
+
+    Direction accuracy: % of blocks where predicted direction matches true direction.
 
     Parameters:
-        y_true: actual MCP prices (time-ordered)
-        y_pred: predicted MCP prices (time-ordered)
+        y_true: actual MCP prices (time-ordered, 96 blocks/day)
+        y_pred: predicted MCP prices (time-ordered, 96 blocks/day)
 
     Returns: dict with classification metric names as keys.
     """
-    
     y_true = np.asarray(y_true, dtype=float)
     y_pred = np.asarray(y_pred, dtype=float)
 
@@ -97,8 +111,18 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
     mask = ~(np.isnan(y_true) | np.isnan(y_pred))
     true_dir, pred_dir = true_dir[mask], pred_dir[mask]
 
+    # Direction accuracy (only for elements with valid direction labels, i.e., from index 96 onwards)
+    if len(true_dir) > BLOCKS_PER_DAY:
+        dir_mask = ~np.isnan(y_true[BLOCKS_PER_DAY:]) & ~np.isnan(y_pred[BLOCKS_PER_DAY:])
+        if dir_mask.sum() > 0:
+            dir_accuracy = round(np.mean(true_dir[BLOCKS_PER_DAY:][dir_mask] == pred_dir[BLOCKS_PER_DAY:][dir_mask]) * 100, 4)
+        else:
+            dir_accuracy = np.nan
+    else:
+        dir_accuracy = np.nan
+
     if len(np.unique(true_dir)) < 2:
-        return {m: np.nan for m in ["AUC_ROC", "F1"]}
+        return {"AUC_ROC": np.nan, "F1": np.nan, "Dir_Accuracy": dir_accuracy}
 
     try:
         auc = roc_auc_score(true_dir, pred_dir)
@@ -108,6 +132,7 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
     return {
         "AUC_ROC": round(auc, 4),
         "F1":      round(f1_score(true_dir, pred_dir, zero_division=0), 4),
+        "Dir_Accuracy": dir_accuracy,
     }
 
 

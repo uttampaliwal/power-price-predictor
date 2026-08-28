@@ -19,9 +19,6 @@ from config import (
     DATA_PROCESSED_DIR, DATA_RAW_DIR, MODELS_DIR, MODELS_NO_WEATHER_DIR, 
     PREDS_DIR, HOLDOUT_START_DATE, CITIES
 )
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
-
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "powerbi_data")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

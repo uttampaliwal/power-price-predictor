@@ -16,8 +16,6 @@ import numpy as np
 import pandas as pd
 import holidays
 from config import DATA_RAW_DIR, DATA_PROCESSED_DIR, WEATHER_FEATURE_COLS
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
 
 INDIA_HOL = holidays.India()
 

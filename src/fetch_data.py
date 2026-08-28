@@ -17,9 +17,6 @@ from datetime import date, timedelta
 import pandas as pd
 from tqdm import tqdm
 from config import DATA_RAW_DIR
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
-
 BASE_URL = "https://www.iexindia.com/market-data/day-ahead-market/market-snapshot"
 
 COLUMNS_MAPPING = {
