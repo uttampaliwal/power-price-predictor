@@ -84,6 +84,7 @@ logs/
 data/raw/
 data/processed/
 models/
+!src/models/
 models_no_weather/
 predictions/
 powerbi_data/
