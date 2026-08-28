@@ -13,7 +13,6 @@ Usage:
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import joblib
 import numpy as np
 import pandas as pd
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table

@@ -82,10 +82,10 @@ class LSTMModel(nn.Module):
             num_layers=n_layers,
             batch_first=True,
             dropout=dropout if n_layers > 1 else 0,
-            bidirectional=False,
+            bidirectional=True,
         )
         self.fc = nn.Sequential(
-            nn.Linear(hidden_size, 256),
+            nn.Linear(hidden_size * 2, 256),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(256, BLOCKS_PER_DAY),
@@ -289,26 +289,24 @@ def run():
         )):
             flat_rows.append({"date": pred_day, "block": b, "pred": p, "true": t})
 
-    pred_df_meta = holdout_raw.merge(
-        pd.DataFrame([{
-            "date": test_seq_dates[LOOKBACK_DAYS + i],
-            "block": b,
-            "predicted_mcp_norm": all_preds[i // BLOCKS_PER_DAY].flatten()[b]
-            if i // BLOCKS_PER_DAY < len(all_preds) else np.nan
-        } for i, b in enumerate(
-            [(j, b) for j in range(len(all_preds)) for b in range(BLOCKS_PER_DAY)]
-        )], columns=["date", "block", "predicted_mcp_norm"]),
-        on=["date", "block"], how="inner",
-    ) if False else None  # simplified: just save flat predictions
-
     # Save
     pd.DataFrame([{"model": "lstm", **metrics}]).to_csv(
         os.path.join(MODELS_DIR, "metrics.csv"), index=False)
 
-    preds_out = pd.DataFrame({
-        "predicted_mcp": y_pred,
-        "true_mcp":      y_true,
-    })
+    # Build prediction DataFrame with date/block metadata for benchmark compatibility
+    test_seq_dates = sorted({**all_train_blocks, **test_blocks}.keys())
+    test_day_dates = test_seq_dates[LOOKBACK_DAYS:]
+    pred_rows = []
+    for i, pred_day in enumerate(test_day_dates[:len(all_preds)]):
+        for b in range(BLOCKS_PER_DAY):
+            if i * BLOCKS_PER_DAY + b < len(y_pred):
+                pred_rows.append({
+                    "date": pred_day,
+                    "block": b,
+                    "mcp_rs_per_mwh": y_true[i * BLOCKS_PER_DAY + b] if i * BLOCKS_PER_DAY + b < len(y_true) else np.nan,
+                    "predicted_mcp": y_pred[i * BLOCKS_PER_DAY + b] if i * BLOCKS_PER_DAY + b < len(y_pred) else np.nan,
+                })
+    preds_out = pd.DataFrame(pred_rows)
     preds_out.to_csv(os.path.join(PREDS_DIR, "test_predictions.csv"), index=False)
 
     torch.save({

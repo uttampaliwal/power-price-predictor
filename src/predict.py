@@ -213,7 +213,7 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
     model, mode, feature_cols = load_tabular_model(model_name)
 
     # Determine which parquet files to load based on model type
-    has_weather = feature_cols == FEATURE_COLS
+    has_weather = set(feature_cols) == set(FEATURE_COLS)
     suffix = "" if has_weather else "_no_weather"
 
     train_path   = os.path.join(DATA_DIR, f"training_features{suffix}.parquet")

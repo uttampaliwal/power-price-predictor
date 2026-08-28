@@ -109,6 +109,10 @@ class ConformalForecaster:
         """
         Predict with conformal intervals.
 
+        Uses standard split conformal prediction:
+        - margin = quantile of calibration scores at (1 - alpha) level
+        - P10 = y_pred - margin, P90 = y_pred + margin
+
         Args:
             model: fitted sklearn-compatible model
             X: test features
@@ -120,21 +124,15 @@ class ConformalForecaster:
             raise ValueError("Must call fit() first")
 
         y_pred = model.predict(X)
-        n = len(self.cal_scores)
 
-        results = {}
-        for q in self.quantile_levels:
-            if q == 0.50:
-                results["P50"] = y_pred
-            else:
-                level = q if q < 0.50 else q
-                quantile_idx = int(np.ceil((1 - self.alpha) * level * n))
-                quantile_idx = min(quantile_idx, n - 1)
-                margin = np.sort(self.cal_scores)[quantile_idx]
-                if q < 0.50:
-                    results[f"P{int(q*100):02d}"] = y_pred - margin
-                else:
-                    results[f"P{int(q*100):02d}"] = y_pred + margin
+        # Standard conformal: margin = (1-alpha) quantile of calibration scores
+        margin = np.quantile(self.cal_scores, 1 - self.alpha)
+
+        results = {
+            "P10": y_pred - margin,
+            "P50": y_pred,
+            "P90": y_pred + margin,
+        }
 
         return pd.DataFrame(results)
 

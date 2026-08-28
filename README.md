@@ -50,7 +50,7 @@
 
 ![Drift Plot](images/drift_plot.png)
 
-*Model maintains stable performance over 16+ months of unseen holdout data (Jan 2025 – Apr 2026).*
+*Model maintains stable performance over 17+ months of unseen holdout data (Jan 2025 – May 2026).*
 
 ---
 
@@ -79,7 +79,7 @@
 ### Train/Test Split Strategy
 
 - **Training**: Jan 2020 – Dec 2024 (5 years, ~1.8M rows)
-- **Holdout**: Jan 2025 – Apr 2026 (16 months, unseen data)
+- **Holdout**: Jan 2025 – May 2026 (17 months, unseen data)
 - **Method**: Time-based split (NOT random) to simulate real-world deployment
 - **Rationale**: Random splits cause data leakage in time-series forecasting
 
@@ -149,13 +149,13 @@
 
 ### Features Used
 
-| Category | Features |
-|----------|----------|
-| **Price History** | MCP lags (1-block, 1-hour, 1-day, 1-week) |
-| **Time** | Hour, day-of-week, month, season, quarter |
-| **Demand-Supply** | Purchase bid, sell bid, demand-supply ratio |
-| **Weather** | Delhi temperature, Mumbai temperature |
-| **Calendar** | Indian holidays, peak hours (17-22) |
+| Category | Features | Count |
+|----------|----------|-------|
+| **Calendar/Time** | block, hour, day-of-week, day-of-year, month, year, weekend, holiday, season, hour-bucket | 10 |
+| **Price Lags** | 1-day lag, 7-day lag (per block) | 2 |
+| **Rolling Stats** | 7-day & 30-day mean/std (per block, with 1-day shift) | 4 |
+| **Weather** | Delhi apparent temperature, Mumbai apparent temperature | 2 |
+| **Total** | | **18** |
 
 ### Key Insight: Time Features > Weather
 
@@ -218,10 +218,10 @@ playwright install chromium
 python src/fetch_data.py --start 2020-01-01 --end 2024-12-31 --split training
 
 # Fetch holdout data (Jan 2025 - present)
-python src/fetch_data.py --start 2025-01-01 --end 2026-04-08 --split holdout
+python src/fetch_data.py --start 2025-01-01 --end 2026-05-31 --split holdout
 
 # Fetch weather data
-python src/fetch_weather.py --start 2020-01-01 --end 2026-04-08
+python src/fetch_weather.py --start 2020-01-01 --end 2026-05-31
 ```
 
 ### 3. Preprocessing & Training

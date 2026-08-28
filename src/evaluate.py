@@ -125,6 +125,9 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
         return {"AUC_ROC": np.nan, "F1": np.nan, "Dir_Accuracy": dir_accuracy}
 
     try:
+        # Note: Paper defines AUC between realized direction labels z and
+        # predicted direction labels. With binary inputs, roc_auc_score
+        # computes balanced accuracy (equivalent to AUC on binary-vs-binary).
         auc = roc_auc_score(true_dir, pred_dir)
     except Exception:
         auc = np.nan
