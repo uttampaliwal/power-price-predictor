@@ -20,21 +20,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import joblib
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
+from config import FEATURE_COLS
 
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "predictions")
-
-FEATURE_COLS = [
-    "block", "hour", "day_of_week", "day_of_year", "month", "year",
-    "is_weekend", "is_holiday", "season", "hour_bucket",
-    "mcp_lag_1d", "mcp_lag_7d",
-    "mcp_rolling_7d_mean", "mcp_rolling_7d_std",
-    "mcp_rolling_30d_mean", "mcp_rolling_30d_std",
-    "delhi_apparent_temp", "mumbai_apparent_temp",
-]
 BLOCKS_PER_DAY = 96
 
 
@@ -64,7 +54,6 @@ def load_tabular_model(model_name: str):
 
 def fetch_daily_weather(target_date: date, lat: float, lon: float):
     import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
     if target_date < date.today() - timedelta(days=5):
         url = "https://archive-api.open-meteo.com/v1/archive"
@@ -80,7 +69,7 @@ def fetch_daily_weather(target_date: date, lat: float, lon: float):
         "end_date": str(target_date)
     }
     try:
-        http = urllib3.PoolManager(cert_reqs='CERT_NONE')
+        http = urllib3.PoolManager()
         response = http.request('GET', url, fields=params, timeout=10.0)
         if response.status == 200:
             temps = response.json()["hourly"]["apparent_temperature"]

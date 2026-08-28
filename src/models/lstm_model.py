@@ -24,22 +24,13 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
+from config import FEATURE_COLS, TARGET_COL as TARGET
 
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "lstm")
 PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "lstm")
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Features used as input to LSTM (all are numeric after preprocessing)
-FEATURE_COLS = [
-    "mcp_rs_per_mwh",          # target — included as past input
-    "mcp_lag_1d", "mcp_lag_7d",
-    "mcp_rolling_7d_mean", "mcp_rolling_7d_std",
-    "block", "hour", "day_of_week", "month",
-    "is_weekend", "is_holiday", "season", "hour_bucket",
-]
-TARGET = "mcp_rs_per_mwh"
 LOOKBACK_DAYS = 7     # use 7 past days to predict 1 future day
 BLOCKS_PER_DAY = 96
 BATCH_SIZE = 64

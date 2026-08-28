@@ -1,7 +1,5 @@
 import os
 from datetime import date
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
 
 
 # Directory Structure
@@ -34,6 +32,18 @@ CITIES = {
 
 # Weather feature columns to be excluded in no-weather mode
 WEATHER_FEATURE_COLS = ["delhi_apparent_temp", "mumbai_apparent_temp"]
+
+# Feature columns (single source of truth)
+FEATURE_COLS = [
+    "block", "hour", "day_of_week", "day_of_year", "month", "year",
+    "is_weekend", "is_holiday", "season", "hour_bucket",
+    "mcp_lag_1d", "mcp_lag_7d",
+    "mcp_rolling_7d_mean", "mcp_rolling_7d_std",
+    "mcp_rolling_30d_mean", "mcp_rolling_30d_std",
+    "delhi_apparent_temp", "mumbai_apparent_temp",
+]
+
+FEATURE_COLS_NO_WEATHER = [c for c in FEATURE_COLS if c not in WEATHER_FEATURE_COLS]
 
 # Pipeline Dates
 

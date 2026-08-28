@@ -19,20 +19,11 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
+from config import FEATURE_COLS, TARGET_COL as TARGET
 
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "ridge")
 PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "ridge")
-
-FEATURE_COLS = [
-    "block", "hour", "day_of_week", "day_of_year", "month", "year",
-    "is_weekend", "is_holiday", "season", "hour_bucket",
-    "mcp_lag_1d", "mcp_lag_7d",
-    "mcp_rolling_7d_mean", "mcp_rolling_7d_std",
-    "mcp_rolling_30d_mean", "mcp_rolling_30d_std",
-    "delhi_apparent_temp", "mumbai_apparent_temp",
-]
-TARGET = "mcp_rs_per_mwh"
 
 
 def load_data():

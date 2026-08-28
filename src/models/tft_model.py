@@ -1,8 +1,13 @@
 """
-models/tft_model.py — Temporal Fusion Transformer
+models/tft_model.py — Temporal Fusion Transformer (STUB)
 
-Note: This model requires `pytorch-forecasting` and `pytorch-lightning`.
-      Uncomment and run when integrating.
+Status: NOT FUNCTIONAL — requires pytorch-forecasting and pytorch-lightning.
+        Predictions are placeholder zeros. Do NOT use for evaluation.
+
+Future work: Implement real sequential predictions with sliding window approach.
+
+Usage (when dependencies are available):
+    python src/models/tft_model.py
 """
 
 import os, sys

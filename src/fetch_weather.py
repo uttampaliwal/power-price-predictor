@@ -11,10 +11,6 @@ import os
 import pandas as pd
 import urllib3
 from config import DATA_RAW_DIR, CITIES
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 LOCATIONS = CITIES  # Keep alias for backward compatibility within script
 
@@ -30,7 +26,7 @@ def fetch_historical_weather(city, lat, lon, start, end):
     }
     
     print(f"Fetching {city} weather from {start} to {end}...")
-    http = urllib3.PoolManager(cert_reqs='CERT_NONE')
+    http = urllib3.PoolManager()
     response = http.request('GET', url, fields=params, timeout=30.0)
     if response.status != 200:
         raise Exception(f"API Error {response.status}: {response.data.decode()}")
