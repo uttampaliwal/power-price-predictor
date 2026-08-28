@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./models_no_weather:/app/models_no_weather
+      - ./predictions:/app/predictions
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

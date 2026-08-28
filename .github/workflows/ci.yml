@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check src/ tests/ --output-format=github
+          ruff format --check src/ tests/
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short
+
+  validate-pipeline:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate synthetic test data
+        run: |
+          python -c "
+          import pandas as pd, numpy as np
+          np.random.seed(42)
+          dates = pd.date_range('2020-01-01', periods=90, freq='D')
+          rows = []
+          for d in dates:
+              for b in range(96):
+                  h = b // 4
+                  base = 2500
+                  he = 800 * np.sin(np.pi * (h - 6) / 12) if 6 <= h <= 18 else -300
+                  mcp = max(500, base + he + np.random.normal(0, 200) + (-400 if d.dayofweek >= 5 else 0))
+                  rows.append({'date': d.strftime('%Y-%m-%d'), 'time_block': f'{h:02d}:{(b%4)*15:02d} - {h:02d}:{(b%4)*15+15:02d}' if (b%4)*15+15 < 60 else f'{h:02d}:{(b%4)*15:02d} - {h+1:02d}:00', 'purchase_bid_mw': np.random.uniform(4000, 8000), 'sell_bid_mw': np.random.uniform(15000, 25000), 'mcv_mw': np.random.uniform(4000, 7000), 'final_scheduled_volume_mw': np.random.uniform(4000, 7000), 'mcp_rs_per_mwh': round(mcp, 2)})
+          df = pd.DataFrame(rows)
+          df.to_csv('data/raw/training/dam_2020_01.csv', index=False)
+          df.to_csv('data/raw/holdout/dam_2020_01.csv', index=False)
+          "
+
+      - name: Run preprocessing
+        run: |
+          python src/preprocess.py --split training --no-weather
+          python src/preprocess.py --split holdout --no-weather
+
+      - name: Train models
+        run: |
+          python src/models/naive_model.py
+          python src/models/ridge_no_weather_model.py
+          python src/models/xgboost_no_weather_model.py
+
+      - name: Verify predictions exist
+        run: |
+          test -f predictions/naive/test_predictions.csv
+          test -f predictions/ridge_no_weather/test_predictions.csv
+          test -f predictions/xgboost_no_weather/test_predictions.csv
+          echo "All prediction files exist"
