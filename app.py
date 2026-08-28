@@ -909,17 +909,28 @@ elif page == "Data Management":
 
     # ── Helper: run a shell command and stream output ──
     def _run_pipeline_cmd(cmd: list[str], status_container):
-        """Run a command, streaming output to a Streamlit status container."""
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, encoding='utf-8', errors='replace',
-            cwd=os.path.dirname(__file__)
+        """Run a command, streaming output line-by-line to a Streamlit status container."""
+        import subprocess as _sp
+        proc = _sp.Popen(
+            cmd, stdout=_sp.PIPE, stderr=_sp.STDOUT,
+            text=True, encoding='utf-8', errors='replace',
+            cwd=os.path.dirname(__file__), bufsize=1
         )
-        if result.stdout:
-            status_container.code(result.stdout[-3000:], language="text")
-        if result.returncode != 0:
-            status_container.error(f"Command failed (exit code {result.returncode})")
-            if result.stderr:
-                status_container.code(result.stderr[-2000:], language="text")
+        output_lines = []
+        placeholder = status_container.empty()
+        for line in proc.stdout:
+            line = line.rstrip('\n')
+            output_lines.append(line)
+            # Show last 15 lines滚动更新
+            display = '\n'.join(output_lines[-15:])
+            placeholder.code(display, language="text")
+        proc.wait()
+        # Final dump
+        if output_lines:
+            final = '\n'.join(output_lines[-30:])
+            placeholder.code(final, language="text")
+        if proc.returncode != 0:
+            status_container.error(f"Command failed (exit code {proc.returncode})")
             return False
         return True
 

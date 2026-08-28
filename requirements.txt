@@ -22,5 +22,9 @@ plotly>=5.15.0
 # Dashboard
 streamlit>=1.30.0
 
+# Web scraping
+lxml>=4.9.0
+html5lib>=1.1
+
 # Utilities
 tqdm>=4.65.0
