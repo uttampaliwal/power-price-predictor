@@ -20,34 +20,62 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import joblib
-from config import FEATURE_COLS
+from config import FEATURE_COLS, FEATURE_COLS_NO_WEATHER
 
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
+MODELS_NO_WX_DIR = os.path.join(os.path.dirname(__file__), "..", "models_no_weather")
 PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "predictions")
 BLOCKS_PER_DAY = 96
 
 
 def load_tabular_model(model_name: str):
-    if model_name == "xgboost":
-        import xgboost as xgb
-        m = xgb.XGBRegressor()
-        m.load_model(os.path.join(MODELS_DIR, "xgboost", "xgboost.json"))
-        return m, "tabular"
-    elif model_name == "lightgbm":
-        import lightgbm as lgb
-        m = lgb.Booster(model_file=os.path.join(MODELS_DIR, "lightgbm", "lightgbm.txt"))
-        return m, "lightgbm_booster"
-    elif model_name == "ridge":
-        pipe = joblib.load(os.path.join(MODELS_DIR, "ridge", "ridge_pipeline.pkl"))
-        return pipe, "tabular"
-    elif model_name == "random_forest":
-        m = joblib.load(os.path.join(MODELS_DIR, "random_forest", "random_forest.pkl"))
-        return m, "tabular"
-    elif model_name == "naive":
-        return None, "naive"
+    """Load model from models/ first, fallback to models_no_weather/."""
+    import xgboost as xgb
+    import lightgbm as lgb
+
+    # (base_dir, feature_cols, model_filename_overrides)
+    model_dirs = [
+        (MODELS_DIR, FEATURE_COLS, {}),
+        (MODELS_NO_WX_DIR, FEATURE_COLS_NO_WEATHER, {
+            "xgboost": "xgboost_no_weather.json",
+            "lightgbm": "lightgbm_no_weather.txt",
+            "ridge": "ridge_no_weather_pipeline.pkl",
+            "random_forest": "random_forest_no_weather.pkl",
+        }),
+    ]
+
+    for base_dir, feature_cols, overrides in model_dirs:
+        if model_name == "xgboost":
+            fname = overrides.get("xgboost", "xgboost.json")
+            path = os.path.join(base_dir, "xgboost", fname)
+            if os.path.exists(path):
+                m = xgb.XGBRegressor()
+                m.load_model(path)
+                return m, "tabular", feature_cols
+        elif model_name == "lightgbm":
+            fname = overrides.get("lightgbm", "lightgbm.txt")
+            path = os.path.join(base_dir, "lightgbm", fname)
+            if os.path.exists(path):
+                m = lgb.Booster(model_file=path)
+                return m, "lightgbm_booster", feature_cols
+        elif model_name == "ridge":
+            fname = overrides.get("ridge", "ridge_pipeline.pkl")
+            path = os.path.join(base_dir, "ridge", fname)
+            if os.path.exists(path):
+                pipe = joblib.load(path)
+                return pipe, "tabular", feature_cols
+        elif model_name == "random_forest":
+            fname = overrides.get("random_forest", "random_forest.pkl")
+            path = os.path.join(base_dir, "random_forest", fname)
+            if os.path.exists(path):
+                m = joblib.load(path)
+                return m, "tabular", feature_cols
+
+    if model_name == "naive":
+        return None, "naive", FEATURE_COLS
     elif model_name == "lstm":
-        return None, "lstm"
+        return None, "lstm", FEATURE_COLS
     else:
         raise ValueError(f"Unknown model: {model_name}")
 
@@ -182,19 +210,22 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
 
     print(f"\n=== Predicting with {model_name} for {target_date} ===\n")
 
+    model, mode, feature_cols = load_tabular_model(model_name)
 
-    train_path   = os.path.join(DATA_DIR, "training_features.parquet")
-    holdout_path = os.path.join(DATA_DIR, "holdout_features.parquet")
+    # Determine which parquet files to load based on model type
+    has_weather = feature_cols == FEATURE_COLS
+    suffix = "" if has_weather else "_no_weather"
+
+    train_path   = os.path.join(DATA_DIR, f"training_features{suffix}.parquet")
+    holdout_path = os.path.join(DATA_DIR, f"holdout_features{suffix}.parquet")
     dfs = []
     for p in [train_path, holdout_path]:
         if os.path.exists(p):
             dfs.append(pd.read_parquet(p, columns=["date", "block", "time_block", "mcp_rs_per_mwh"]))
     if not dfs:
-        raise FileNotFoundError("No processed data found. Run preprocess.py first.")
+        raise FileNotFoundError(f"No processed data found at {train_path}. Run preprocess.py first.")
     history = pd.concat(dfs).sort_values("date")
     history["date"] = pd.to_datetime(history["date"])
-
-    model, mode = load_tabular_model(model_name)
 
     if mode == "naive":
         
@@ -212,7 +243,7 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
                                   "Use lstm_model.py to evaluate on holdout instead.")
     else:
         feat_df = get_features_for_date(target_date, history)
-        X  = feat_df[FEATURE_COLS].values.astype(float)
+        X  = feat_df[feature_cols].values.astype(float)
 
         if mode == "lightgbm_booster":
             y_pred = model.predict(X)
@@ -231,9 +262,10 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
             "block":         blocks,
             "time_block":    time_blocks,
             "predicted_mcp": np.round(y_pred, 2),
-            "delhi_weather": np.round(feat_df["delhi_apparent_temp"].values, 2),
-            "mumbai_weather": np.round(feat_df["mumbai_apparent_temp"].values, 2),
         })
+        if has_weather:
+            out_df["delhi_weather"] = np.round(feat_df["delhi_apparent_temp"].values, 2)
+            out_df["mumbai_weather"] = np.round(feat_df["mumbai_apparent_temp"].values, 2)
     else:
         out_df = pd.DataFrame({
             "date":          str(target_date),
