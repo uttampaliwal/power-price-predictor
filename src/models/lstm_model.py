@@ -26,6 +26,9 @@ from torch.utils.data import Dataset, DataLoader
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
 from config import FEATURE_COLS, TARGET_COL as TARGET
 
+# LSTM needs target column as part of features (for daily block grouping)
+LSTM_FEATURE_COLS = [TARGET] + FEATURE_COLS
+
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "lstm")
 PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "lstm")
@@ -106,7 +109,7 @@ def build_daily_blocks(df: pd.DataFrame) -> tuple:
     Returns (daily_blocks dict, dates list, scaler_mean, scaler_std)
     Normalizes using mean/std of training data.
     """
-    feature_data = df[FEATURE_COLS].values.astype(float)
+    feature_data = df[LSTM_FEATURE_COLS].values.astype(float)
     return feature_data, df
 
 
@@ -120,17 +123,17 @@ def load_and_prepare():
     val_df  = train_full[train_full["date"] >  cutoff].copy()
     train_df = train_full[train_full["date"] <= cutoff].copy()
 
-    # Drop rows with NaN in feature cols
+    # Drop rows with NaN
     for df in [train_df, val_df, holdout]:
-        df.dropna(subset=FEATURE_COLS, inplace=True)
+        df.dropna(subset=LSTM_FEATURE_COLS, inplace=True)
 
     # Normalize using train stats
-    mean = train_df[FEATURE_COLS].mean()
-    std  = train_df[FEATURE_COLS].std().replace(0, 1)
+    mean = train_df[LSTM_FEATURE_COLS].mean()
+    std  = train_df[LSTM_FEATURE_COLS].std().replace(0, 1)
 
     def normalize(df):
         df = df.copy()
-        df[FEATURE_COLS] = (df[FEATURE_COLS] - mean) / std
+        df[LSTM_FEATURE_COLS] = (df[LSTM_FEATURE_COLS] - mean) / std
         return df
 
     train_df = normalize(train_df)
@@ -143,7 +146,7 @@ def load_and_prepare():
         for d, grp in df.groupby("date"):
             grp_sorted = grp.sort_values("block")
             if len(grp_sorted) == BLOCKS_PER_DAY:
-                blocks[d] = grp_sorted[FEATURE_COLS].values.astype(np.float32)
+                blocks[d] = grp_sorted[LSTM_FEATURE_COLS].values.astype(np.float32)
         dates = sorted(blocks.keys())
         return blocks, dates
 
@@ -152,8 +155,8 @@ def load_and_prepare():
     test_blocks,  test_dates  = to_daily_blocks(holdout_n)
 
     # For inverse-transform of predictions
-    mcp_mean = float(mean[TARGET])
-    mcp_std  = float(std[TARGET])
+    mcp_mean = float(train_df[TARGET].mean())
+    mcp_std  = float(train_df[TARGET].std()) or 1.0
 
     return (
         train_blocks, train_dates,
@@ -225,7 +228,7 @@ def run():
     val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False)
     test_loader  = DataLoader(test_ds,  batch_size=BATCH_SIZE, shuffle=False)
 
-    n_features = len(FEATURE_COLS)
+    n_features = len(LSTM_FEATURE_COLS)
     model = LSTMModel(n_features=n_features, hidden_size=128, n_layers=2).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)

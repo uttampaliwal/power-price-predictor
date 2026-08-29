@@ -1,0 +1,10 @@
+Model,Method,Normal PICP (%),Normal Width,Spike PICP (%),Spike Width,Normal N,Spike N
+XGBoost,Split Conformal,91.99,3986.06,79.37,3986.06,48219,9189
+XGBoost,Adaptive Conformal,94.85,4734.74,84.84,4734.74,48219,9189
+XGBoost,Cqr,84.62,2176.59,85.35,3919.13,48219,9189
+LightGBM,Split Conformal,92.97,4349.47,83.11,4349.47,48219,9189
+LightGBM,Adaptive Conformal,94.96,4949.45,86.46,4949.45,48219,9189
+LightGBM,Cqr,84.62,2176.59,85.35,3919.13,48219,9189
+Ridge,Split Conformal,90.42,2833.42,81.37,2833.42,48219,9189
+Ridge,Adaptive Conformal,93.62,3749.04,83.16,3749.04,48219,9189
+Ridge,Cqr,84.62,2176.59,85.35,3919.13,48219,9189
