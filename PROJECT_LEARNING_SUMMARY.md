@@ -225,10 +225,9 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 ## SUMMARY: KEY TAKEAWAYS FOR PRESENTATION
 
 ### 1-Minute Elevator Pitch
-> "We built an ML system that predicts IEX electricity prices with 87% accuracy (R²=0.867), 
-> a 56% improvement over baseline. XGBoost emerged as the best model for price forecasting, 
-> while Ridge excels at predicting price direction for trading. Surprisingly, weather adds 
-> minimal value - time-based features matter most."
+> "We built an ML system that predicts IEX electricity prices with 87% accuracy (R²=0.871), 
+> a 62% improvement over baseline. XGBoost and LightGBM are the top models for price forecasting. 
+> Surprisingly, weather adds minimal value - time-based features matter most."
 
 ### Top 3 Learnings for Q&A
 1. **Time features > Weather features** for short-term electricity price prediction

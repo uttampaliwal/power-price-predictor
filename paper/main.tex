@@ -27,7 +27,7 @@ An Open-Source AI Pipeline with Backtesting Validation for the Indian Energy Exc
 \maketitle
 
 \begin{abstract}
-We present a systematic empirical study of machine learning models for day-ahead electricity price forecasting in the Day-Ahead Market (DAM) of the Indian Energy Exchange (IEX), evaluated at the exchange's native 15-minute resolution of 96 clearing blocks per day. Using approximately 6.5 years of block-level market data (January 2020--August 2026), comprising roughly 233,000 observations scraped from public exchange records, we benchmark five model families---seasonal-naive persistence, ridge regression, random forests, XGBoost, and LightGBM---under a strict temporal evaluation protocol in which all models are trained on January 2020--December 2024 and evaluated once on an untouched 20-month holdout (January 2025--August 2026). Gradient-boosted ensembles dominate: XGBoost attains $R^2 = 0.871$ with RMSE of 1030 \Rs/MWh, a weighted absolute percentage error (WAPE) of 14.1\%, an AUC-ROC of 0.606, and direction accuracy of 57.8\% on a day-over-day rise classification task, against $R^2 = 0.539$ and RMSE of 1951 \Rs/MWh for a strong weekly persistence baseline---a 47\% reduction in root-mean-squared error and a 62\% relative improvement in $R^2$. A paired ablation shows that adding hourly apparent temperatures for Delhi and Mumbai changes holdout $R^2$ by at most $+0.003$, indicating that calendar structure and autoregressive lags capture essentially all exploitable signal at this horizon. We further validate economic utility through backtesting three---block-shift arbitrage, directional trading, and peak-shaving---on the same holdout period, demonstrating that gradient-boosted predictions generate positive cumulative P\&L with Sharpe ratios exceeding 7.0. The full pipeline---data collection, feature engineering, training, benchmarking, probabilistic forecasting, REST API serving, experiment tracking, and interactive dashboards---is released as open source.
+We present a systematic empirical study of machine learning models for day-ahead electricity price forecasting in the Day-Ahead Market (DAM) of the Indian Energy Exchange (IEX), evaluated at the exchange's native 15-minute resolution of 96 clearing blocks per day. Using approximately 6.5 years of block-level market data (January 2020--August 2026), comprising roughly 233,000 observations scraped from public exchange records, we benchmark five model families---seasonal-naive persistence, ridge regression, random forests, XGBoost, and LightGBM---under a strict temporal evaluation protocol in which all models are trained on January 2020--December 2024 and evaluated once on an untouched 20-month holdout (January 2025--August 2026). Gradient-boosted ensembles dominate: XGBoost attains $R^2 = 0.871$ with RMSE of 1030 \Rs/MWh, a weighted absolute percentage error (WAPE) of 14.1\%, an AUC-ROC of 0.606, and direction accuracy of 57.8\% on a day-over-day rise classification task, against $R^2 = 0.539$ and RMSE of 1951 \Rs/MWh for a strong weekly persistence baseline---a 47\% reduction in root-mean-squared error and a 62\% relative improvement in $R^2$. A paired ablation shows that adding hourly apparent temperatures for Delhi and Mumbai changes holdout $R^2$ by at most $+0.004$, indicating that calendar structure and autoregressive lags capture essentially all exploitable signal at this horizon. We further validate economic utility through backtesting three---block-shift arbitrage, directional trading, and peak-shaving---on the same holdout period, demonstrating that gradient-boosted predictions generate positive cumulative P\&L with Sharpe ratios exceeding 7.0. The full pipeline---data collection, feature engineering, training, benchmarking, probabilistic forecasting, REST API serving, experiment tracking, and interactive dashboards---is released as open source.
 \end{abstract}
 
 \noindent\textbf{Keywords:} day-ahead market; spot price prediction; gradient boosting; XGBoost; LightGBM; time-series evaluation; open-source pipeline; energy economics
@@ -48,7 +48,7 @@ This paper makes the following contributions:
 \begin{enumerate}
   \item \textbf{A reproducible benchmark on long-horizon Indian market data.} We curate approximately 233,000 block-level DAM observations spanning January 2020--August 2026, collected directly from public IEX records, and evaluate five model families under a strict temporal split: training on 2020--2024, model selection only through end-2024, and a single untouched evaluation over a 20-month holdout (January 2025--August 2026). To our knowledge this holdout horizon is substantially longer than what is typical in EPF studies, where test windows of weeks to months are common \cite{lago2021}.
   \item \textbf{A dual regression-plus-direction evaluation protocol.} Beyond standard regression metrics ($R^2$, RMSE, MAE, MAPE, WAPE), we formalize a directional task---did the price rise by at least 1\% versus yesterday's same block?---evaluated with AUC-ROC and F1, reflecting how trading desks actually consume forecasts.
-  \item \textbf{A weather-ablation finding.} Adding hourly apparent temperatures for Delhi and Mumbai to an already strong feature set shifts holdout $R^2$ by no more than $+0.003$ across four model families, empirically demonstrating that for day-ahead auctions---where participants' bids already embed weather expectations---raw meteorological regressors add essentially no incremental value.
+  \item \textbf{A weather-ablation finding.} Adding hourly apparent temperatures for Delhi and Mumbai to an already strong feature set shifts holdout $R^2$ by no more than $+0.004$ across four model families, empirically demonstrating that for day-ahead auctions---where participants' bids already embed weather expectations---raw meteorological regressors add essentially no incremental value.
   \item \textbf{Economic validation via backtesting.} We translate statistical accuracy into economic utility by backtesting three trading strategies---block-shift arbitrage, directional trading, and peak-shaving---on the same holdout period, demonstrating positive cumulative P\&L with Sharpe ratios exceeding 7.0.
   \item \textbf{Evidence of long-horizon stability.} Monthly RMSE over the 20-month holdout remains within a narrow band for all learned models while the naive baseline degrades sharply during high-volatility spring months, quantifying robustness to regime drift.
   \item \textbf{An open, deployment-grade system.} The complete pipeline---daily scraping, leakage-safe feature construction, per-model training with early stopping, benchmarking, drift monitoring, REST API serving (FastAPI), experiment tracking (MLflow), and interactive dashboards---is released as open source \cite{repo}.
@@ -181,10 +181,10 @@ Table~\ref{tab:main} reports holdout performance over January 2025--August 2026;
 \toprule
 \textbf{Model} & \textbf{RMSE} & \textbf{WAPE \%} & \textbf{MAPE \%} & $\mathbf{R^2}$ & \textbf{AUC-ROC} & \textbf{F1} \\
 \midrule
-XGBoost          & 1030  & 14.1 & 30.8 & 0.871 & 0.606 & 0.504 \\
-LightGBM         & \textbf{1034} & \textbf{14.1} & 30.8 & \textbf{0.870} & \textbf{0.604} & \textbf{0.504} \\
+XGBoost          & 1030  & 14.1 & 29.2 & \textbf{0.871} & \textbf{0.606} & \textbf{0.504} \\
+LightGBM         & \textbf{1030} & \textbf{14.0} & 30.8 & \textbf{0.872} & 0.602 & 0.501 \\
 Random Forest    & 1060           & 14.4 & 28.0 & 0.864 & 0.593 & 0.502 \\
-Ridge            & 1182          & 16.3 & 29.1 & 0.831 & 0.514 & 0.445 \\
+Ridge            & 1183          & 16.3 & 29.4 & 0.830 & 0.511 & 0.443 \\
 Naive (lag-7d)   & 1951          & 25.2 & 41.2 & 0.539 & 0.633 & 0.540 \\
 \bottomrule
 \end{tabular}
@@ -199,7 +199,7 @@ Three observations stand out. First, gradient boosting dominates level accuracy:
 \label{fig:comparison}
 \end{figure}
 
-In absolute terms the champion's 13.8\% WAPE means the average block-level forecast is within roughly one-seventh of the realized price---operationally meaningful given that day-over-day DAM prices routinely move by far more than this.
+In absolute terms the champion's 14.1\% WAPE means the average block-level forecast is within roughly one-seventh of the realized price---operationally meaningful given that day-over-day DAM prices routinely move by far more than this.
 
 \subsection{Weather Ablation}\label{sec:ablation}
 
@@ -214,14 +214,14 @@ To isolate the marginal value of meteorological covariates, each model family wa
 \textbf{Model} & $R^2$ (wx) & $R^2$ (no wx) & $\Delta R^2$ & AUC (wx $\to$ no wx) \\
 \midrule
 XGBoost       & 0.871 & 0.868 & $+0.003$ & 0.606 $\to$ 0.602 \\
-LightGBM      & 0.872 & 0.869 & $+0.003$ & 0.602 $\to$ 0.602 \\
+LightGBM      & 0.872 & 0.869 & $+0.002$ & 0.602 $\to$ 0.602 \\
 Random Forest & 0.864 & 0.860 & $+0.004$ & 0.593 $\to$ 0.595 \\
-Ridge         & 0.831 & 0.831 & $\phantom{+}0.000$ & 0.514 $\to$ 0.514 \\
+Ridge         & 0.830 & 0.831 & $\phantom{+}0.000$ & 0.511 $\to$ 0.514 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The effect is uniformly negligible. The largest change in either direction is $|\Delta R^2| \le 0.003$. We attribute this to the institutional structure of the day-ahead auction (Section~\ref{sec:market}): by the time the forecaster acts, every participant's bid already aggregates sophisticated private weather and demand intelligence, so raw city-level temperatures are redundant with respect to the lagged-price signal. This finding carries practical weight---two-point temperature measurements are a tempting but unproductive feature category here---and aligns with the broader lesson that forecast value must be demonstrated against leakage-safe baselines rather than asserted \citep{lago2021}.
+The effect is uniformly negligible. The largest change in either direction is $|\Delta R^2| \le 0.004$. We attribute this to the institutional structure of the day-ahead auction (Section~\ref{sec:market}): by the time the forecaster acts, every participant's bid already aggregates sophisticated private weather and demand intelligence, so raw city-level temperatures are redundant with respect to the lagged-price signal. This finding carries practical weight---two-point temperature measurements are a tempting but unproductive feature category here---and aligns with the broader lesson that forecast value must be demonstrated against leakage-safe baselines rather than asserted \citep{lago2021}.
 
 \subsection{Temporal Stability Over 20 Unseen Months}\label{sec:stability}
 

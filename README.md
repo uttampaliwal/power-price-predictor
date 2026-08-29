@@ -157,7 +157,7 @@
 
 ### Key Insight: Time Features > Weather
 
-> Weather adds only **+0.1%** to R² improvement. Time-based features (hour, day-of-week, season) explain 99% of price variance because IEX is a short-term market where temporal patterns dominate.
+> Weather adds only **+0.3%** to R² improvement. Time-based features (hour, day-of-week, season) explain the majority of price variance because IEX is a short-term market where temporal patterns dominate.
 
 ---
 
@@ -305,7 +305,7 @@ Random train/test splits cause **data leakage** in time-series. Using chronologi
 MAPE becomes unstable when prices hit caps (₹10,000/MWh). **WAPE (Weighted Absolute Percentage Error)** normalizes by total actual values, making it more robust for energy markets.
 
 ### Why Weather Features Optional?
-Weather adds only +0.1% R² improvement. Time features (hour, day-of-week, season) are far more important because IEX is a short-term market. Models are trained with and without weather for comparison.
+Weather adds only +0.3% R² improvement. Time features (hour, day-of-week, season) are far more important because IEX is a short-term market. Models are trained with and without weather for comparison.
 
 ---
 

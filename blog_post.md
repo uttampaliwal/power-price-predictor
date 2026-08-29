@@ -68,7 +68,7 @@ Three trading strategies were simulated on the same 20-month holdout period. **�
 
 1. **Calendar features dominate.** Hour, day-of-week, and seasonal patterns explain most of the forecastable signal. Weather is nearly useless for day-ahead DAM.
 
-2. **Level accuracy ≠ directional accuracy.** XGBoost dominates on RMSE but the naive baseline has better direction accuracy (62.9% vs 57.5%). For trading, rank-based metrics (AUC-ROC) matter more than regression R².
+2. **Level accuracy ≠ directional accuracy.** XGBoost dominates on RMSE but the naive baseline has better direction accuracy (62.9% vs 57.8%). For trading, rank-based metrics (AUC-ROC) matter more than regression R².
 
 3. **20-month stability.** All learned models maintain stable error over 20 months without retraining. The naive baseline degrades sharply during heat-wave months.
 
