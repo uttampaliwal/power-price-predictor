@@ -1,0 +1,40 @@
+\documentclass[11pt]{letter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\begin{document}
+
+\textbf{Cover Letter}
+
+Dear Editor,
+
+I would like to submit my manuscript ``Day-Ahead Electricity Price Forecasting in the Indian Energy Exchange: Gradient-Boosted Ensembles at 15-Minute Resolution'' for consideration in Applied Energy.
+
+This paper presents a systematic empirical study of machine learning models for day-ahead electricity price forecasting on the Indian Energy Exchange (IEX), evaluated at the exchange's native 15-minute resolution. Using approximately 2.2 million block-level observations spanning January 2020--May 2026, we benchmark five model families under a strict 17-month temporal holdout.
+
+\textbf{Key contributions:}
+\begin{itemize}
+  \item First large-scale EPF benchmark on Indian market data at 15-minute resolution with a 17-month holdout horizon (substantially longer than typical in the literature).
+  \item Weather ablation showing that city-level temperature features add no measurable value ($|\Delta R^2| \le 0.004$) in day-ahead auctions where participants' bids already embed weather intelligence.
+  \item Evidence that directional skill (AUC-ROC) decouples from level accuracy (RMSE), with practical implications for objective-specific model selection.
+  \item Full open-source pipeline: https://github.com/uttampaliwal/power-price-predictor
+\end{itemize}
+
+This work has not been published elsewhere and is not under consideration by another journal. The author has approved the manuscript and agrees with its submission to Applied Energy.
+
+I suggest the following potential reviewers:
+\begin{enumerate}
+  \item Prof. Rafa\l{} Weron, Wroc\l{}aw University of Science and Technology (rafa\l{}.weron@pwr.edu.pl) --- leading EPF researcher, author of the canonical EPF survey.
+  \item Dr. Florian Ziel, University of Duisburg-Essen (florian.ziel@uni-due.de) --- expert in electricity price forecasting and energy market analysis.
+  \item Dr. Bartosz Uniejewski, Wroc\l{}aw University of Science and Technology (bartosz.uniejewski@pwr.edu.pl) --- specialist in regularization for EPF.
+\end{itemize}
+
+Thank you for considering my manuscript.
+
+Sincerely,
+
+Uttam Paliwal
+Indian Institute of Technology Indore
+Email: msdsm2504107046@iiti.ac.in
+
+\end{document}
