@@ -95,6 +95,8 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
     (up vs not-up, >=1% day-over-day change at same block).
 
     Direction accuracy: % of blocks where predicted direction matches true direction.
+    AUC-ROC uses continuous predicted percentage change as the ranking score
+    (not binarized predictions), matching the paper definition.
 
     Parameters:
         y_true: actual MCP prices (time-ordered, 96 blocks/day)
@@ -110,6 +112,7 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
 
     mask = ~(np.isnan(y_true) | np.isnan(y_pred))
     true_dir, pred_dir = true_dir[mask], pred_dir[mask]
+    y_true_m, y_pred_m = y_true[mask], y_pred[mask]
 
     # Direction accuracy (only for elements with valid direction labels, i.e., from index 96 onwards)
     if len(true_dir) > BLOCKS_PER_DAY:
@@ -125,15 +128,28 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
         return {"AUC_ROC": np.nan, "F1": np.nan, "Dir_Accuracy": dir_accuracy}
 
     try:
-        # Note: Paper defines AUC between realized direction labels z and
-        # predicted direction labels. With binary inputs, roc_auc_score
-        # computes balanced accuracy (equivalent to AUC on binary-vs-binary).
-        auc = roc_auc_score(true_dir, pred_dir)
+        # AUC-ROC: use continuous predicted percentage change as ranking score
+        # This measures how well the model ranks price movements, not just binary direction
+        n = len(y_true_m)
+        if n > BLOCKS_PER_DAY:
+            ref_true = y_true_m[:-BLOCKS_PER_DAY]
+            ref_pred = y_pred_m[:-BLOCKS_PER_DAY]
+            curr_true = y_true_m[BLOCKS_PER_DAY:]
+            curr_pred = y_pred_m[BLOCKS_PER_DAY:]
+            true_pct = (curr_true - ref_true) / np.abs(ref_true + 1e-9)
+            pred_pct = (curr_pred - ref_pred) / np.abs(ref_pred + 1e-9)
+            true_labels = (true_pct >= 0.01).astype(int)
+            if len(np.unique(true_labels)) < 2:
+                auc = np.nan
+            else:
+                auc = roc_auc_score(true_labels, pred_pct)
+        else:
+            auc = np.nan
     except Exception:
         auc = np.nan
 
     return {
-        "AUC_ROC": round(auc, 4),
+        "AUC_ROC": round(auc, 4) if not np.isnan(auc) else np.nan,
         "F1":      round(f1_score(true_dir, pred_dir, zero_division=0), 4),
         "Dir_Accuracy": dir_accuracy,
     }

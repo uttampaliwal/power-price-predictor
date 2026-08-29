@@ -1,0 +1,2 @@
+model,RMSE,MAE,MAPE,R2,WAPE,AUC_ROC,F1,Dir_Accuracy
+random_forest_no_weather,1075.3964,614.2897,27.3192,0.8598,14.4905,0.5952,0.5047,58.0489

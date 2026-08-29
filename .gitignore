@@ -96,5 +96,13 @@ models/random_forest/random_forest.pkl
 
 # predictions/
 # powerbi_data/
-paper/
 *.lock
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.out
+paper/*.pdf
+paper/*.tar.gz
+paper/applied-energy-submission/
+paper/applied-energy-submission/
+models_no_weather/random_forest/random_forest_no_weather.pkl

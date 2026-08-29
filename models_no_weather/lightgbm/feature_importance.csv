@@ -1,0 +1,17 @@
+feature,importance
+day_of_year,2106
+day_of_week,1023
+mcp_lag_1d,962
+block,790
+mcp_rolling_7d_mean,621
+mcp_rolling_7d_std,593
+mcp_lag_7d,565
+mcp_rolling_30d_std,486
+mcp_rolling_30d_mean,472
+year,385
+hour_bucket,264
+is_holiday,237
+month,184
+hour,168
+season,105
+is_weekend,91
