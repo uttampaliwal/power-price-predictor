@@ -16,11 +16,11 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 #### B. Models Implemented & Compared
 | Model | Type | R² | Best Use Case |
 |-------|------|-----|-------------|
-| XGBoost | Gradient Boosting | **0.867** | Price forecasting |
-| LightGBM | Gradient Boosting | 0.867 | Price forecasting |
-| Random Forest | Bagging | 0.862 | Robust predictions |
-| Ridge | Linear | 0.817 | Direction trading |
-| Naive | Baseline | 0.555 | Comparison |
+| XGBoost | Gradient Boosting | **0.869** | Price forecasting |
+| LightGBM | Gradient Boosting | **0.870** | Price forecasting |
+| Random Forest | Bagging | 0.864 | Robust predictions |
+| Ridge | Linear | 0.831 | Linear baseline |
+| Naive | Baseline | 0.539 | Comparison |
 
 #### C. Evaluation Framework
 - **Regression Metrics**: R², RMSE, MAE, MAPE, WAPE
@@ -152,13 +152,13 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 - **Action**: Focus feature engineering on time-based patterns
 
 #### 2. **Gradient Boosting Works Best for This Problem**
-- **Finding**: XGBoost & LightGBM achieve R² = 0.867 (top performance)
+- **Finding**: XGBoost & LightGBM achieve R² = 0.869-0.870 (top performance)
 - **Learning**: Non-linear models with tree-based ensembles handle electricity price volatility better than linear models
 - **Why**: Can capture complex interactions between time, demand, and supply
 
 #### 3. **Evaluation Requires Both Regression & Classification**
-- **Regression (R², WAPE)**: Tells us prediction accuracy (R² = 0.867 = 86.7% variance explained)
-- **Classification (AUC, F1)**: Tells us directional accuracy (F1 = 0.698 = reliable for trading)
+- **Regression (R², WAPE)**: Tells us prediction accuracy (R² = 0.869 = 86.9% variance explained)
+- **Classification (AUC, F1)**: Tells us directional accuracy (AUC-ROC ≈ 0.60, modest directional signal)
 - **Learning**: Different stakeholders need different metrics:
   - Operations team → R², WAPE (exact price)
   - Trading team → F1, AUC (price direction)
@@ -175,19 +175,19 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 
 ### B. Business Learnings
 
-#### 6. **56% Improvement Over Baseline is Significant**
-- Naive baseline: R² = 0.555
-- XGBoost: R² = 0.867
+#### 6. **61% Improvement Over Baseline is Significant**
+- Naive baseline: R² = 0.539
+- XGBoost: R² = 0.869
 - **Business Impact**: This improvement translates to better bidding strategies, cost savings, and profit optimization
 
-#### 7. **13.8% WAPE is Operationally Acceptable**
-- Average prediction error of 13.8% is within industry standards
+#### 7. **14.1% WAPE is Operationally Acceptable**
+- Average prediction error of 14.1% is within industry standards
 - Electricity prices are inherently volatile (demand spikes, supply shortages)
 - **Learning**: Perfect predictions are impossible; focus on actionable accuracy
 
 #### 8. **Model Selection Depends on Use Case**
 - **For Price Forecasting** → Use XGBoost (best R², lowest WAPE)
-- **For Trading (Direction)** → Use Ridge (best AUC-ROC = 0.792, F1 = 0.698)
+- **For Trading (Direction)** → Naive has highest AUC-ROC (0.633), but XGBoost/LightGBM are close (0.60) with much better level accuracy
 - **Learning**: No single "best" model - match model to business objective
 
 ### C. Engineering Learnings

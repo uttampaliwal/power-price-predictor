@@ -14,7 +14,7 @@
 
 **Problem:** Indian electricity prices in the Day-Ahead Market (DAM) are highly volatile — ranging from ₹2,000 to ₹10,000/MWh within hours based on demand, supply, weather, and grid conditions. Accurate price forecasting helps power traders, producers, and DISCOMs optimize bidding strategies and reduce costs.
 
-**Solution:** An end-to-end ML pipeline that predicts IEX DAM prices for all 96 daily time-blocks (15-minute intervals) with **87% accuracy (R² = 0.867)**, achieving a **56% improvement over naive baseline**.
+**Solution:** An end-to-end ML pipeline that predicts IEX DAM prices for all 96 daily time-blocks (15-minute intervals) with **87% accuracy (R² = 0.869)**, achieving a **61% improvement over naive baseline**.
 
 **Impact:** Enables data-driven bidding decisions, cost optimization, and real-time market intelligence for energy stakeholders.
 
@@ -24,17 +24,17 @@
 
 | Model | R² Score | WAPE | RMSE | AUC-ROC | Best For |
 |-------|----------|------|------|---------|----------|
-| **XGBoost** | **0.867** | 13.8% | 966 | 0.779 | Price forecasting |
-| **LightGBM** | 0.867 | 13.8% | 968 | 0.776 | Price forecasting |
-| **Random Forest** | 0.862 | 14.0% | 987 | 0.742 | Robust predictions |
-| **Ridge** | 0.817 | 16.4% | 1136 | **0.792** | Direction trading |
-| **Naive Baseline** | 0.555 | 23.4% | 1701 | 0.734 | Comparison |
+| **XGBoost** | **0.869** | 14.1% | 1038 | 0.599 | Price forecasting |
+| **LightGBM** | **0.870** | 14.1% | 1034 | 0.604 | Price forecasting |
+| **Random Forest** | 0.864 | 14.4% | 1060 | 0.593 | Robust predictions |
+| **Ridge** | 0.831 | 16.3% | 1182 | 0.514 | Linear baseline |
+| **Naive Baseline** | 0.539 | 25.2% | 1951 | 0.633 | Comparison |
 
 **Key Achievements:**
-- ✅ 56% improvement over naive baseline (R²: 0.555 → 0.867)
-- ✅ 13.8% average error (WAPE) — operationally acceptable
-- ✅ 80.2% accuracy on price direction prediction
+- ✅ 61% improvement over naive baseline (R²: 0.539 → 0.869)
+- ✅ 14.1% average error (WAPE) — operationally acceptable
 - ✅ Time-based train/test split (no data leakage)
+- ✅ Validated on 20 months of unseen holdout data (Jan 2025 – Aug 2026)
 
 ---
 
@@ -50,7 +50,7 @@
 
 ![Drift Plot](images/drift_plot.png)
 
-*Model maintains stable performance over 17+ months of unseen holdout data (Jan 2025 – May 2026).*
+*Model maintains stable performance over 20 months of unseen holdout data (Jan 2025 – Aug 2026).*
 
 ---
 
@@ -60,14 +60,12 @@
 
 | Algorithm | Type | R² | Status |
 |-----------|------|-----|--------|
-| Naive Baseline | Statistical | 0.555 | ✅ Baseline |
-| Ridge Regression | Linear ML | 0.817 | ✅ Active |
-| Random Forest | Bagging | 0.862 | ✅ Active |
-| XGBoost | Gradient Boosting | **0.867** | ✅ Champion |
-| LightGBM | Gradient Boosting | 0.867 | ✅ Active |
-| LSTM | Deep Learning | — | ✅ Active |
-| Prophet | Statistical | — | 🔲 Stub |
-| TFT | Deep Learning | — | 🔲 Stub |
+| Naive Baseline | Statistical | 0.539 | ✅ Baseline |
+| Ridge Regression | Linear ML | 0.831 | ✅ Active |
+| Random Forest | Bagging | 0.864 | ✅ Active |
+| XGBoost | Gradient Boosting | **0.869** | ✅ Champion |
+| LightGBM | Gradient Boosting | **0.870** | ✅ Active |
+| LSTM | Deep Learning | — | 🔲 Stub |
 
 ### Why XGBoost Won
 
@@ -78,8 +76,8 @@
 
 ### Train/Test Split Strategy
 
-- **Training**: Jan 2020 – Dec 2024 (5 years, ~1.8M rows)
-- **Holdout**: Jan 2025 – May 2026 (17 months, unseen data)
+- **Training**: Apr 2020 – Dec 2024 (~166K rows)
+- **Holdout**: Jan 2025 – Aug 2026 (20 months, ~58K rows, unseen data)
 - **Method**: Time-based split (NOT random) to simulate real-world deployment
 - **Rationale**: Random splits cause data leakage in time-series forecasting
 
@@ -214,14 +212,14 @@ playwright install chromium
 ### 2. Data Collection
 
 ```bash
-# Fetch 5 years of historical prices (Jan 2020 - Dec 2024)
-python src/fetch_data.py --start 2020-01-01 --end 2024-12-31 --split training
+# Fetch 5 years of historical prices (Apr 2020 - Dec 2024)
+python src/fetch_data.py --start 2020-04-01 --end 2024-12-31 --split training
 
-# Fetch holdout data (Jan 2025 - present)
-python src/fetch_data.py --start 2025-01-01 --end 2026-05-31 --split holdout
+# Fetch holdout data (Jan 2025 - Aug 2026)
+python src/fetch_data.py --start 2025-01-01 --end 2026-08-31 --split holdout
 
 # Fetch weather data
-python src/fetch_weather.py --start 2020-01-01 --end 2026-05-31
+python src/fetch_weather.py --start 2020-04-01 --end 2026-08-31
 ```
 
 ### 3. Preprocessing & Training
@@ -269,6 +267,9 @@ power-price-predictor/
 │   ├── predict.py                # 96-block predictions
 │   ├── evaluate.py               # Metrics computation
 │   ├── benchmark.py              # Model comparison
+│   ├── backtest.py               # Backtesting & P&L simulation
+│   ├── api.py                    # FastAPI REST endpoint
+│   ├── tracking.py               # MLflow experiment tracking
 │   ├── visualize_pipeline.py     # HTML report generator
 │   ├── powerbi_exporter.py       # CSV export for Power BI
 │   └── models/
@@ -278,16 +279,19 @@ power-price-predictor/
 │       ├── xgboost_model.py
 │       ├── lightgbm_model.py
 │       └── lstm_model.py
-├── data/                        # Gitignored (run pipeline to generate)
-├── models/                      # Gitignored (trained models)
-├── predictions/                 # Gitignored (output predictions)
+├── data/                        # Raw & processed data (committed)
+│   ├── raw/training/            # DAM prices 2020-2024
+│   ├── raw/holdout/             # DAM prices 2025-2026
+│   └── processed/               # Feature parquets
+├── models/                      # Trained models (committed, RF .pkl excluded)
+├── predictions/                 # Model predictions + backtest results
 ├── powerbi_data/                # Gitignored (exported CSVs)
 ├── app.py                       # Streamlit dashboard
 ├── requirements.txt
 ├── README.md
 ├── OPERATIONS_GUIDE.md
 ├── MODEL_EXPLANATION.md
-└── WEATHER_IMPACT_ANALYSIS.md
+└── blog_post.md
 ```
 
 ---
@@ -308,11 +312,67 @@ Weather adds only +0.1% R² improvement. Time features (hour, day-of-week, seaso
 ## 📌 Future Improvements
 
 - [ ] **LSTM/Transformer models** for sequence modeling
-- [ ] **Probabilistic forecasting** (P10/P50/P90 confidence bands)
 - [ ] **Real-time API integration** with IEX
 - [ ] **Automated retraining pipeline** (CI/CD)
 - [ ] **Weather derivatives** incorporation
 - [ ] **Anomaly detection** for price spikes
+
+---
+
+## 📈 Backtesting
+
+Three trading strategies were backtested on 20 months of holdout data (Jan 2025 – Aug 2026):
+
+| Strategy | Total P&L | Sharpe | Win Rate | Capacity |
+|----------|-----------|--------|----------|----------|
+| Block-Shift Arbitrage | ₹404M | 56.7 | 100% | 100 MW |
+| Directional Trading | ₹1,277M | 7.6 | 59.6% | 100 MW |
+| Peak Shaving | ₹216M | 63.0 | 100% | 50 MW |
+
+**⚠️ Important Disclaimers:**
+- Results are **simulated**, not live trading performance
+- No transaction costs, exchange fees, or slippage included
+- Fixed capacity (100 MW / 50 MW) with no market-price impact modeling
+- Perfect execution assumed at actual MCP (no bid-ask spread)
+- High Sharpe ratios (56.7, 63.0) arise from idealized assumptions
+- Past performance does not guarantee future results
+
+Run backtesting:
+```bash
+python src/backtest.py
+```
+
+---
+
+## 🔌 API
+
+FastAPI endpoint for real-time predictions:
+
+```bash
+# Start server
+uvicorn src.api:app --port 8000
+
+# Single prediction
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"model_name": "xgboost", "target_date": "2026-04-15"}'
+
+# Compare models
+curl -X POST http://localhost:8000/compare \
+  -d '{"model_names": ["xgboost", "lightgbm"], "target_date": "2026-04-15"}'
+```
+
+---
+
+## 📊 MLflow Tracking
+
+```bash
+# Log all model experiments
+python src/tracking.py --log-all
+
+# View MLflow UI
+mlflow ui --port 5000
+```
 
 ---
 
@@ -323,10 +383,10 @@ Weather adds only +0.1% R² improvement. Time features (hour, day-of-week, seaso
 | [README.md](README.md) | This file — project overview & quick start |
 | [OPERATIONS_GUIDE.md](OPERATIONS_GUIDE.md) | Step-by-step daily operations |
 | [MODEL_EXPLANATION.md](MODEL_EXPLANATION.md) | Model architecture & feature details |
-| [WEATHER_IMPACT_ANALYSIS.md](WEATHER_IMPACT_ANALYSIS.md) | Weather feature impact analysis |
 | [POWERBI_SETUP.md](POWERBI_SETUP.md) | Power BI dashboard setup |
 | [POWERBI_DASHBOARD_BUILD_GUIDE.md](POWERBI_DASHBOARD_BUILD_GUIDE.md) | Advanced Power BI tips |
 | [PROJECT_LEARNING_SUMMARY.md](PROJECT_LEARNING_SUMMARY.md) | Key learnings & insights |
+| [blog_post.md](blog_post.md) | Blog post draft for Medium |
 
 ---
 
