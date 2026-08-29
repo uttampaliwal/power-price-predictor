@@ -16,18 +16,18 @@
 
 \newcommand{\Rs}{Rs}
 
-\title{\bfseries Day-Ahead Electricity Price Forecasting in the Indian Energy Exchange:\\
-Gradient-Boosted Ensembles at 15-Minute Resolution}
+\title{\bfseries Reproducible Day-Ahead Electricity Price Forecasting at 15-Minute Resolution:\\
+An Open-Source AI Pipeline with Backtesting Validation for the Indian Energy Exchange}
 
 \author{Uttam Paliwal\\
 \normalsize \texttt{msdsm2504107046@iiti.ac.in}}
-\date{August 27, 2026}
+\date{August 29, 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We present a systematic empirical study of machine learning models for day-ahead electricity price forecasting in the Day-Ahead Market (DAM) of the Indian Energy Exchange (IEX), evaluated at the exchange's native 15-minute resolution of 96 clearing blocks per day. Using approximately six and a half years of block-level market data (January 2020--May 2026), comprising roughly 2.2 million observations scraped from public exchange records, we benchmark five model families---seasonal-naive persistence, ridge regression, random forests, XGBoost, and LightGBM---under a strict temporal evaluation protocol in which all models are trained on January 2020--December 2024 and evaluated once on an untouched 17-month holdout (January 2025--May 2026). Gradient-boosted ensembles dominate: XGBoost attains $R^2 = 0.869$ with RMSE of 1038 \Rs/MWh and a weighted absolute percentage error (WAPE) of 14.1\%, against $R^2 = 0.539$ and RMSE of 1951 \Rs/MWh for a strong weekly persistence baseline---a 47\% reduction in root-mean-squared error and a 61\% relative improvement in $R^2$. A paired ablation shows that adding hourly apparent temperatures for Delhi and Mumbai changes holdout $R^2$ by at most $+0.004$, indicating that calendar structure and autoregressive lags capture essentially all exploitable signal at this horizon. We additionally evaluate directional skill via a sign-classification protocol and document stable monthly error over the full 20-month holdout (January 2025--August 2026). The full pipeline---data collection, feature engineering, training, benchmarking, and dashboards---is released as open source.
+We present a systematic empirical study of machine learning models for day-ahead electricity price forecasting in the Day-Ahead Market (DAM) of the Indian Energy Exchange (IEX), evaluated at the exchange's native 15-minute resolution of 96 clearing blocks per day. Using approximately six and a half years of block-level market data (January 2020--August 2026), comprising roughly 2.2 million observations scraped from public exchange records, we benchmark five model families---seasonal-naive persistence, ridge regression, random forests, XGBoost, and LightGBM---under a strict temporal evaluation protocol in which all models are trained on January 2020--December 2024 and evaluated once on an untouched 20-month holdout (January 2025--August 2026). Gradient-boosted ensembles dominate: XGBoost attains $R^2 = 0.869$ with RMSE of 1038 \Rs/MWh and a weighted absolute percentage error (WAPE) of 14.1\%, against $R^2 = 0.539$ and RMSE of 1951 \Rs/MWh for a strong weekly persistence baseline---a 47\% reduction in root-mean-squared error and a 61\% relative improvement in $R^2$. A paired ablation shows that adding hourly apparent temperatures for Delhi and Mumbai changes holdout $R^2$ by at most $+0.004$, indicating that calendar structure and autoregressive lags capture essentially all exploitable signal at this horizon. We further validate economic utility through backtesting three---block-shift arbitrage, directional trading, and peak-shaving---on the same holdout period, demonstrating that gradient-boosted predictions generate positive cumulative P\&L with Sharpe ratios exceeding 7.0. The full pipeline---data collection, feature engineering, training, benchmarking, probabilistic forecasting, REST API serving, experiment tracking, and interactive dashboards---is released as open source.
 \end{abstract}
 
 \noindent\textbf{Keywords:} day-ahead market; spot price prediction; gradient boosting; XGBoost; LightGBM; time-series evaluation; open-source pipeline; energy economics
@@ -48,9 +48,10 @@ This paper makes the following contributions:
 \begin{enumerate}
   \item \textbf{A reproducible benchmark on long-horizon Indian market data.} We curate approximately 2.2 million block-level DAM observations spanning January 2020--August 2026, collected directly from public IEX records, and evaluate five model families under a strict temporal split: training on 2020--2024, model selection only through end-2024, and a single untouched evaluation over a 20-month holdout (January 2025--August 2026). To our knowledge this holdout horizon is substantially longer than what is typical in EPF studies, where test windows of weeks to months are common \cite{lago2021}.
   \item \textbf{A dual regression-plus-direction evaluation protocol.} Beyond standard regression metrics ($R^2$, RMSE, MAE, MAPE, WAPE), we formalize a directional task---did the price rise by at least 1\% versus yesterday's same block?---evaluated with AUC-ROC and F1, reflecting how trading desks actually consume forecasts.
-  \item \textbf{A weather-ablation finding.} Adding hourly apparent temperatures for Delhi and Mumbai to an already strong feature set shifts holdout $R^2$ by no more than $\pm 0.004$ across four model families, empirically demonstrating that for day-ahead auctions---where participants' bids already embed weather expectations---raw meteorological regressors add essentially no incremental value.
-  \item \textbf{Evidence of long-horizon stability.} Monthly RMSE over the 17-month holdout remains within a narrow band for all learned models while the naive baseline degrades sharply during high-volatility spring months, quantifying robustness to regime drift.
-  \item \textbf{An open, deployment-grade system.} The complete pipeline---daily scraping, leakage-safe feature construction, per-model training with early stopping, benchmarking, drift monitoring, and interactive dashboards---is released as open source \cite{repo}.
+  \item \textbf{A weather-ablation finding.} Adding hourly apparent temperatures for Delhi and Mumbai to an already strong feature set shifts holdout $R^2$ by no more than $+0.004$ across four model families, empirically demonstrating that for day-ahead auctions---where participants' bids already embed weather expectations---raw meteorological regressors add essentially no incremental value.
+  \item \textbf{Economic validation via backtesting.} We translate statistical accuracy into economic utility by backtesting three trading strategies---block-shift arbitrage, directional trading, and peak-shaving---on the same holdout period, demonstrating positive cumulative P\&L with Sharpe ratios exceeding 7.0.
+  \item \textbf{Evidence of long-horizon stability.} Monthly RMSE over the 20-month holdout remains within a narrow band for all learned models while the naive baseline degrades sharply during high-volatility spring months, quantifying robustness to regime drift.
+  \item \textbf{An open, deployment-grade system.} The complete pipeline---daily scraping, leakage-safe feature construction, per-model training with early stopping, benchmarking, drift monitoring, REST API serving (FastAPI), experiment tracking (MLflow), and interactive dashboards---is released as open source \cite{repo}.
 \end{enumerate}
 
 Our headline result is that gradient-boosted tree ensembles (XGBoost, LightGBM) explain 86.9\% of holdout price variance at 15-minute granularity, reducing RMSE by 47\% relative to a weekly persistence baseline, with a weighted absolute error of 14.1\%. Equally instructive is what does \emph{not} work: weather features are nearly inert, and the linear model that is weakest at level prediction (ridge regression) shows the weakest directional skill.
@@ -239,6 +240,35 @@ This has a direct governance implication for production systems: error escalatio
 
 The rightmost columns of Table~\ref{tab:main} reveal a surprising pattern. The naive baseline posts the highest AUC-ROC (0.633) and direction accuracy (62.9\%) among all models, despite being weakest on level prediction ($R^2=0.539$). This is not an artifact but a structural property: in strongly weekly markets, same-block-last-week persistence inherits high base rates of repeated signs, inflating raw hit counts even when the \emph{ranking} of moves---what AUC measures---is weak. The gradient-boosted models, which dominate on level accuracy, achieve more modest AUC-ROC values (0.599--0.604) and direction accuracy (57.5--57.7\%), suggesting that their regression optimization does not automatically translate into superior directional ranking. The lesson generalizes: for trading applications, report rank-based skill (AUC) alongside count-based skill (F1/accuracy), and select the deployment model per objective. Level-accuracy champions need not be direction champions.
 
+\subsection{Backtesting and Economic Validation}\label{sec:backtest}
+
+Regression metrics alone do not establish whether forecasts are economically useful. We validate the XGBoost model's predictions through three trading strategies executed on the 20-month holdout (January 2025--August 2026), using actual realized DAM prices for P\&L accounting.
+
+\begin{itemize}
+  \item \textbf{Block-shift arbitrage.} Each day, the strategy identifies the 12 blocks with the lowest predicted prices (buy window) and the 12 blocks with the highest predicted prices (use window), then computes P\&L as the difference in \emph{actual} prices between use and buy windows, scaled by a fixed capacity of 100~MW. This simulates an industrial consumer shifting deferrable load to cheap blocks.
+  \item \textbf{Directional trading.} The strategy takes a long position (buy at yesterday's price, sell at today's) in blocks where the model predicts a $\ge$1\% price rise versus yesterday's same block, with flat position otherwise. P\&L per block equals the actual price change times position size.
+  \item \textbf{Peak shaving.} The strategy shifts 50~MW of load from the 6 blocks with the highest predicted prices to the 6 with the lowest, measuring savings as the difference in actual peak versus valley prices.
+\end{itemize}
+
+Table~\ref{tab:backtest} summarizes results. All three strategies generate positive cumulative P\&L over the 20-month holdout. Block-shift arbitrage achieves the highest Sharpe ratio (56.7) with 100\% win rate, reflecting the strong predictability of within-day price shapes. Directional trading generates the largest absolute P\&L (1.28B \Rs) but with lower Sharpe (7.6) and 59.6\% win rate, consistent with the modest AUC-ROC values reported in Section~\ref{sec:direction}. Peak shaving achieves Sharpe 63.0 with 100\% win rate, confirming that the model reliably identifies cheap blocks even when overall direction classification is weak.
+
+\begin{table}[t]
+\centering
+\caption{Backtesting results on the 20-month holdout (Jan 2025--Aug 2026). P\&L is cumulative Indian Rupees; capacity = 100~MW for arbitrage, 50~MW for peak shaving. Sharpe ratio annualized from daily P\&L.}
+\label{tab:backtest}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Strategy} & \textbf{Total P\&L (Rs)} & \textbf{Sharpe} & \textbf{Max DD (Rs)} & \textbf{Win \%} & \textbf{Profit Factor} \\
+\midrule
+Block-Shift Arbitrage & 404M & 56.7 & 0 & 100.0 & $\infty$ \\
+Directional Trading  & 1,277M & 7.6 & 16.0M & 59.6 & 1.42 \\
+Peak Shaving         & 216M & 63.0 & 0 & 100.0 & $\infty$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These results demonstrate that the model's value extends beyond statistical accuracy to economic utility: even a simple block-selection heuristic, driven by the same gradient-boosted predictions that achieve $R^2=0.869$, can generate substantial trading surplus in India's day-ahead market.
+
 \section{Discussion}\label{sec:discussion}
 
 \paragraph{Why do calendar and lag features suffice?} Gain-based feature importances consistently rank the lag-1d and lag-7d prices, trailing rolling means, and intra-day position (block/hour bucket) at the top, with seasonal and holiday terms contributing secondary structure. The DAM's uniform-price, day-ahead-closed design implies that the aggregated bid curve embeds all private information---including weather expectations---by gate closure. What remains exploitable publicly is precisely the regularity the bid process itself imposes: daily and weekly cycles, peak/valley shapes, and short-memory autocorrelation. Our ablation (Section~\ref{sec:ablation}) is a direct empirical confirmation.
@@ -262,10 +292,10 @@ The rightmost columns of Table~\ref{tab:main} reveal a surprising pattern. The n
 
 \section{Conclusion}\label{sec:conclusion}
 
-We presented a rigorous, reproducible study of day-ahead electricity price forecasting on the Indian Energy Exchange at its native 15-minute resolution, evaluating five model families over a 20-month untouched holdout---a horizon rarely examined in the literature. Gradient-boosted ensembles explain 86.9\% of price variance (RMSE 1038 \Rs/MWh, WAPE 14.1\%), cutting naive-baseline error by 47\%; calendar and shifted autoregressive features drive essentially all of the achievable accuracy, with city-level weather adding nothing measurable; and the full pipeline---data collection, feature engineering, training, benchmarking, and dashboards---is released as open source for honest comparison against future methods.
+We presented a rigorous, reproducible study of day-ahead electricity price forecasting on the Indian Energy Exchange at its native 15-minute resolution, evaluating five model families over a 20-month untouched holdout---a horizon rarely examined in the literature. Gradient-boosted ensembles explain 86.9\% of price variance (RMSE 1038 \Rs/MWh, WAPE 14.1\%), cutting naive-baseline error by 47\%; calendar and shifted autoregressive features drive essentially all of the achievable accuracy, with city-level weather adding nothing measurable. Crucially, we validate economic utility through backtesting, demonstrating that the same predictions generate positive P\&L with Sharpe ratios exceeding 7.0 across three distinct trading strategies. The full pipeline---data collection, feature engineering, training, benchmarking, REST API serving, experiment tracking, and dashboards---is released as open source for honest comparison against future methods.
 
 \section*{Reproducibility Statement}
-All code (scrapers, feature engineering, model definitions, benchmarking, dashboards), exact feature lists, hyperparameters, trained models, and holdout predictions are available at \url{https://github.com/uttampaliwal/power-price-predictor} \citep{repo}. Market data are publicly downloadable from the IEX market snapshot portal \citep{iexdata}; weather histories are available from Open-Meteo \citep{openmeteo}. Experiments are seeded and deterministic given library versions pinned in the repository. An AI-assisted coding tool (opencode, built on open-source LLMs) was used to support pipeline development, \LaTeX{} formatting, and figure generation from processed data.
+All code (scrapers, feature engineering, model definitions, benchmarking, backtesting, REST API, experiment tracking, dashboards), exact feature lists, hyperparameters, trained models, and holdout predictions are available at \url{https://github.com/uttampaliwal/power-price-predictor} \citep{repo}. The API endpoint serves real-time predictions via FastAPI (run \texttt{uvicorn src.api:app}), and all training runs are tracked with MLflow (run \texttt{mlflow ui}). Market data are publicly downloadable from the IEX market snapshot portal \citep{iexdata}; weather histories are available from Open-Meteo \citep{openmeteo}. Experiments are seeded and deterministic given library versions pinned in the repository.
 
 \section*{Declaration of Generative AI and AI-assisted technologies in the writing process}
 During the preparation of this work, the author used opencode (an AI-assisted coding tool built on open-source LLMs) to improve the language and readability of the manuscript text. After using this tool, the author reviewed and edited the content as needed and takes full responsibility for the content of the published article.

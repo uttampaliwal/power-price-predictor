@@ -93,6 +93,11 @@ logs/
 # RF model is 631MB (max_depth=None per paper spec) — exceeds GitHub 100MB limit
 # Retrain with: python src/models/random_forest_model.py
 models/random_forest/random_forest.pkl
+models_no_weather/random_forest/random_forest_no_weather.pkl
+
+# MLflow local state
+mlflow.db
+mlruns/
 
 # predictions/
 # powerbi_data/

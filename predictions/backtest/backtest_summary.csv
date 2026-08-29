@@ -1,0 +1,4 @@
+strategy,total_pnl_rs,mean_daily_pnl_rs,sharpe_ratio,max_drawdown_rs,win_rate_pct,profit_factor,trading_days
+Block-Shift Arbitrage,404499965.58,676421.35,56.672,0.0,100.0,inf,598
+Directional Trading,1276954730.0,2138952.65,7.606,15982311.0,59.6,6.51,597
+Peak Shaving,216061865.92,361307.47,62.967,0.0,100.0,inf,598
