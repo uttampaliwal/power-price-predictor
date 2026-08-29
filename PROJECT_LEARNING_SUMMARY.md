@@ -16,10 +16,10 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 #### B. Models Implemented & Compared
 | Model | Type | R² | Best Use Case |
 |-------|------|-----|-------------|
-| XGBoost | Gradient Boosting | **0.869** | Price forecasting |
-| LightGBM | Gradient Boosting | **0.870** | Price forecasting |
+| XGBoost | Gradient Boosting | **0.871** | Price forecasting |
+| LightGBM | Gradient Boosting | **0.872** | Price forecasting |
 | Random Forest | Bagging | 0.864 | Robust predictions |
-| Ridge | Linear | 0.831 | Linear baseline |
+| Ridge | Linear | 0.830 | Linear baseline |
 | Naive | Baseline | 0.539 | Comparison |
 
 #### C. Evaluation Framework
@@ -152,12 +152,12 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 - **Action**: Focus feature engineering on time-based patterns
 
 #### 2. **Gradient Boosting Works Best for This Problem**
-- **Finding**: XGBoost & LightGBM achieve R² = 0.869-0.870 (top performance)
+- **Finding**: XGBoost & LightGBM achieve R² = 0.871-0.872 (top performance)
 - **Learning**: Non-linear models with tree-based ensembles handle electricity price volatility better than linear models
 - **Why**: Can capture complex interactions between time, demand, and supply
 
 #### 3. **Evaluation Requires Both Regression & Classification**
-- **Regression (R², WAPE)**: Tells us prediction accuracy (R² = 0.869 = 86.9% variance explained)
+- **Regression (R², WAPE)**: Tells us prediction accuracy (R² = 0.871 = 87.1% variance explained)
 - **Classification (AUC, F1)**: Tells us directional accuracy (AUC-ROC ≈ 0.60, modest directional signal)
 - **Learning**: Different stakeholders need different metrics:
   - Operations team → R², WAPE (exact price)
@@ -175,9 +175,9 @@ Built an end-to-end machine learning system to predict Indian Energy Exchange (I
 
 ### B. Business Learnings
 
-#### 6. **61% Improvement Over Baseline is Significant**
+#### 6. **62% Improvement Over Baseline is Significant**
 - Naive baseline: R² = 0.539
-- XGBoost: R² = 0.869
+- XGBoost: R² = 0.871
 - **Business Impact**: This improvement translates to better bidding strategies, cost savings, and profit optimization
 
 #### 7. **14.1% WAPE is Operationally Acceptable**

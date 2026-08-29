@@ -29,13 +29,13 @@ An end-to-end open-source pipeline that:
 
 | Model | R² | RMSE (₹/MWh) | WAPE |
 |-------|-----|---------------|------|
-| **XGBoost** | **0.869** | **1,038** | **14.1%** |
-| LightGBM | 0.870 | 1,034 | 14.1% |
+| **XGBoost** | **0.871** | **1,030** | **14.1%** |
+| LightGBM | 0.872 | 1,030 | 14.0% |
 | Random Forest | 0.864 | 1,060 | 14.4% |
 | Ridge | 0.831 | 1,182 | 16.3% |
 | Naive (7-day lag) | 0.539 | 1,951 | 25.2% |
 
-Gradient-boosted ensembles explain **86.9% of price variance** at 15-minute granularity — reducing naive baseline error by **47%**.
+Gradient-boosted ensembles explain **87.1% of price variance** at 15-minute granularity — reducing naive baseline error by **47%**.
 
 ### The Weather Surprise
 
@@ -91,7 +91,7 @@ cd power-price-predictor
 pip install -r requirements.txt
 
 # Fetch data and train
-python src/fetch_data.py --start 2020-04-01 --end 2024-12-31 --split training
+python src/fetch_data.py --start 2020-01-01 --end 2024-12-31 --split training
 python src/preprocess.py --split training
 python src/models/xgboost_model.py
 

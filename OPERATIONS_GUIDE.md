@@ -7,7 +7,7 @@ Extract 96-block continuous data from the IEX Day-Ahead Market.
 
 **Initial Training Set Generation** (For 5 years historical memory)
 ```bash
-python src/fetch_data.py --start 2020-04-01 --end 2024-12-31 --split training
+python src/fetch_data.py --start 2020-01-01 --end 2024-12-31 --split training
 ```
 
 **Live / Holdout Set Maintenance** (Update this daily to keep the model updated)

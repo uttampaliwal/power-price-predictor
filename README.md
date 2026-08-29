@@ -14,7 +14,7 @@
 
 **Problem:** Indian electricity prices in the Day-Ahead Market (DAM) are highly volatile — ranging from ₹2,000 to ₹10,000/MWh within hours based on demand, supply, weather, and grid conditions. Accurate price forecasting helps power traders, producers, and DISCOMs optimize bidding strategies and reduce costs.
 
-**Solution:** An end-to-end ML pipeline that predicts IEX DAM prices for all 96 daily time-blocks (15-minute intervals) with **87% accuracy (R² = 0.869)**, achieving a **61% improvement over naive baseline**.
+**Solution:** An end-to-end ML pipeline that predicts IEX DAM prices for all 96 daily time-blocks (15-minute intervals) with **87% accuracy (R² = 0.871)**, achieving a **62% improvement over naive baseline**.
 
 **Impact:** Enables data-driven bidding decisions, cost optimization, and real-time market intelligence for energy stakeholders.
 
@@ -24,14 +24,14 @@
 
 | Model | R² Score | WAPE | RMSE | AUC-ROC | Best For |
 |-------|----------|------|------|---------|----------|
-| **XGBoost** | **0.869** | 14.1% | 1038 | 0.599 | Price forecasting |
-| **LightGBM** | **0.870** | 14.1% | 1034 | 0.604 | Price forecasting |
+| **XGBoost** | **0.871** | 14.1% | 1030 | 0.606 | Price forecasting |
+| **LightGBM** | **0.872** | 14.0% | 1030 | 0.602 | Price forecasting |
 | **Random Forest** | 0.864 | 14.4% | 1060 | 0.593 | Robust predictions |
-| **Ridge** | 0.831 | 16.3% | 1182 | 0.514 | Linear baseline |
+| **Ridge** | 0.830 | 16.3% | 1183 | 0.511 | Linear baseline |
 | **Naive Baseline** | 0.539 | 25.2% | 1951 | 0.633 | Comparison |
 
 **Key Achievements:**
-- ✅ 61% improvement over naive baseline (R²: 0.539 → 0.869)
+- ✅ 62% improvement over naive baseline (R²: 0.539 → 0.871)
 - ✅ 14.1% average error (WAPE) — operationally acceptable
 - ✅ Time-based train/test split (no data leakage)
 - ✅ Validated on 20 months of unseen holdout data (Jan 2025 – Aug 2026)
@@ -61,10 +61,10 @@
 | Algorithm | Type | R² | Status |
 |-----------|------|-----|--------|
 | Naive Baseline | Statistical | 0.539 | ✅ Baseline |
-| Ridge Regression | Linear ML | 0.831 | ✅ Active |
+| Ridge Regression | Linear ML | 0.830 | ✅ Active |
 | Random Forest | Bagging | 0.864 | ✅ Active |
-| XGBoost | Gradient Boosting | **0.869** | ✅ Champion |
-| LightGBM | Gradient Boosting | **0.870** | ✅ Active |
+| XGBoost | Gradient Boosting | **0.871** | ✅ Champion |
+| LightGBM | Gradient Boosting | **0.872** | ✅ Active |
 | LSTM | Deep Learning | — | 🔲 Stub |
 
 ### Why XGBoost Won
@@ -76,7 +76,7 @@
 
 ### Train/Test Split Strategy
 
-- **Training**: Apr 2020 – Dec 2024 (~166K rows)
+- **Training**: Jan 2020 – Dec 2024 (~175K rows)
 - **Holdout**: Jan 2025 – Aug 2026 (20 months, ~58K rows, unseen data)
 - **Method**: Time-based split (NOT random) to simulate real-world deployment
 - **Rationale**: Random splits cause data leakage in time-series forecasting
@@ -212,14 +212,14 @@ playwright install chromium
 ### 2. Data Collection
 
 ```bash
-# Fetch 5 years of historical prices (Apr 2020 - Dec 2024)
-python src/fetch_data.py --start 2020-04-01 --end 2024-12-31 --split training
+# Fetch 5 years of historical prices (Jan 2020 - Dec 2024)
+python src/fetch_data.py --start 2020-01-01 --end 2024-12-31 --split training
 
 # Fetch holdout data (Jan 2025 - Aug 2026)
 python src/fetch_data.py --start 2025-01-01 --end 2026-08-31 --split holdout
 
 # Fetch weather data
-python src/fetch_weather.py --start 2020-04-01 --end 2026-08-31
+python src/fetch_weather.py --start 2020-01-01 --end 2026-08-31
 ```
 
 ### 3. Preprocessing & Training
