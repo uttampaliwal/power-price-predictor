@@ -53,6 +53,7 @@ htmlcov/
 *.pptx
 # *.pdf
 *.png
+!paper/*.png
 *.jpg
 *.jpeg
 *.gif
@@ -105,8 +106,9 @@ mlruns/
 paper/main.aux
 paper/main.bbl
 paper/main.blg
+paper/main.log
 paper/main.out
-paper/*.pdf
+paper/main.toc
 paper/*.tar.gz
 paper/applied-energy-submission/
 paper/applied-energy-submission/
