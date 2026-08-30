@@ -15,30 +15,34 @@ Usage:
     python src/models/lstm_model.py
 """
 
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
-from config import FEATURE_COLS, TARGET_COL as TARGET
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
+
+from config import FEATURE_COLS
+from config import TARGET_COL as TARGET
+from evaluate import compute_all_metrics, print_metrics_table
 
 # LSTM needs target column as part of features (for daily block grouping)
 LSTM_FEATURE_COLS = [TARGET] + FEATURE_COLS
 
-DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "lstm")
-PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "lstm")
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "lstm")
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-LOOKBACK_DAYS = 7     # use 7 past days to predict 1 future day
+LOOKBACK_DAYS = 7  # use 7 past days to predict 1 future day
 BLOCKS_PER_DAY = 96
 BATCH_SIZE = 64
 EPOCHS = 100
-PATIENCE = 10         # early stopping patience
+PATIENCE = 10  # early stopping patience
 
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -49,6 +53,7 @@ class DaySequenceDataset(Dataset):
     Each sample: X = (LOOKBACK_DAYS × BLOCKS_PER_DAY, N_features),
                  y = (BLOCKS_PER_DAY,)  ← next day's MCP values
     """
+
     def __init__(self, daily_blocks: dict, dates: list):
         """
         daily_blocks: {date: np.ndarray shape (96, n_features)}
@@ -62,10 +67,12 @@ class DaySequenceDataset(Dataset):
 
     def __getitem__(self, idx):
         target_date = self.dates[idx + LOOKBACK_DAYS]
-        input_dates = self.dates[idx: idx + LOOKBACK_DAYS]
+        input_dates = self.dates[idx : idx + LOOKBACK_DAYS]
 
-        x = np.concatenate([self.daily_blocks[d] for d in input_dates], axis=0)  # (7*96, F)
-        y = self.daily_blocks[target_date][:, 0]                                  # (96,) — MCP col 0
+        x = np.concatenate(
+            [self.daily_blocks[d] for d in input_dates], axis=0
+        )  # (7*96, F)
+        y = self.daily_blocks[target_date][:, 0]  # (96,) — MCP col 0
 
         return (
             torch.tensor(x, dtype=torch.float32),
@@ -77,7 +84,13 @@ class DaySequenceDataset(Dataset):
 # Model
 # ────────────────────────────────────────────────────────────────────────────────
 class LSTMModel(nn.Module):
-    def __init__(self, n_features: int, hidden_size: int = 128, n_layers: int = 2, dropout: float = 0.2):
+    def __init__(
+        self,
+        n_features: int,
+        hidden_size: int = 128,
+        n_layers: int = 2,
+        dropout: float = 0.2,
+    ):
         super().__init__()
         self.lstm = nn.LSTM(
             input_size=n_features,
@@ -96,9 +109,9 @@ class LSTMModel(nn.Module):
 
     def forward(self, x):
         # x: (batch, seq_len=7*96, n_features)
-        lstm_out, _ = self.lstm(x)            # (batch, seq_len, hidden)
-        last = lstm_out[:, -1, :]             # (batch, hidden)
-        return self.fc(last)                  # (batch, 96)
+        lstm_out, _ = self.lstm(x)  # (batch, seq_len, hidden)
+        last = lstm_out[:, -1, :]  # (batch, hidden)
+        return self.fc(last)  # (batch, 96)
 
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -116,11 +129,11 @@ def build_daily_blocks(df: pd.DataFrame) -> tuple:
 def load_and_prepare():
     print(f"  Device: {DEVICE}")
     train_full = pd.read_parquet(os.path.join(DATA_DIR, "training_features.parquet"))
-    holdout    = pd.read_parquet(os.path.join(DATA_DIR, "holdout_features.parquet"))
+    holdout = pd.read_parquet(os.path.join(DATA_DIR, "holdout_features.parquet"))
 
     # Time-series validation split (last 60 days of training)
-    cutoff  = train_full["date"].max() - pd.Timedelta(days=60)
-    val_df  = train_full[train_full["date"] >  cutoff].copy()
+    cutoff = train_full["date"].max() - pd.Timedelta(days=60)
+    val_df = train_full[train_full["date"] > cutoff].copy()
     train_df = train_full[train_full["date"] <= cutoff].copy()
 
     # Drop rows with NaN
@@ -129,7 +142,7 @@ def load_and_prepare():
 
     # Normalize using train stats
     mean = train_df[LSTM_FEATURE_COLS].mean()
-    std  = train_df[LSTM_FEATURE_COLS].std().replace(0, 1)
+    std = train_df[LSTM_FEATURE_COLS].std().replace(0, 1)
 
     def normalize(df):
         df = df.copy()
@@ -137,7 +150,7 @@ def load_and_prepare():
         return df
 
     train_df = normalize(train_df)
-    val_df   = normalize(val_df)
+    val_df = normalize(val_df)
     holdout_n = normalize(holdout)
 
     def to_daily_blocks(df):
@@ -151,19 +164,23 @@ def load_and_prepare():
         return blocks, dates
 
     train_blocks, train_dates = to_daily_blocks(train_df)
-    val_blocks,   val_dates   = to_daily_blocks(val_df)
-    test_blocks,  test_dates  = to_daily_blocks(holdout_n)
+    val_blocks, val_dates = to_daily_blocks(val_df)
+    test_blocks, test_dates = to_daily_blocks(holdout_n)
 
     # For inverse-transform of predictions
     mcp_mean = float(train_df[TARGET].mean())
-    mcp_std  = float(train_df[TARGET].std()) or 1.0
+    mcp_std = float(train_df[TARGET].std()) or 1.0
 
     return (
-        train_blocks, train_dates,
-        val_blocks,   val_dates,
-        test_blocks,  test_dates,
-        holdout,      # original (un-normalized) for metadata
-        mcp_mean, mcp_std,
+        train_blocks,
+        train_dates,
+        val_blocks,
+        val_dates,
+        test_blocks,
+        test_dates,
+        holdout,  # original (un-normalized) for metadata
+        mcp_mean,
+        mcp_std,
     )
 
 
@@ -198,26 +215,30 @@ def eval_epoch(model, loader, criterion):
 
 def run():
     os.makedirs(MODELS_DIR, exist_ok=True)
-    os.makedirs(PREDS_DIR,  exist_ok=True)
+    os.makedirs(PREDS_DIR, exist_ok=True)
 
     print("=== LSTM Model ===\n")
 
     (
-        train_blocks, train_dates,
-        val_blocks,   val_dates,
-        test_blocks,  test_dates,
-        holdout_raw,  mcp_mean, mcp_std,
+        train_blocks,
+        train_dates,
+        val_blocks,
+        val_dates,
+        test_blocks,
+        test_dates,
+        holdout_raw,
+        mcp_mean,
+        mcp_std,
     ) = load_and_prepare()
 
     # Merge val into train blocks for dataset (val still used for early stopping)
     all_train_blocks = {**train_blocks, **val_blocks}
-    all_train_dates  = sorted(all_train_blocks.keys())
+    all_train_dates = sorted(all_train_blocks.keys())
 
     # Build datasets / loaders
     train_ds = DaySequenceDataset(train_blocks, train_dates)
-    val_ds   = DaySequenceDataset(
-        {**train_blocks, **val_blocks},
-        sorted(all_train_blocks.keys())
+    val_ds = DaySequenceDataset(
+        {**train_blocks, **val_blocks}, sorted(all_train_blocks.keys())
     )
     test_ds = DaySequenceDataset(
         {**all_train_blocks, **test_blocks},
@@ -225,17 +246,19 @@ def run():
     )
 
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=False)
-    val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False)
-    test_loader  = DataLoader(test_ds,  batch_size=BATCH_SIZE, shuffle=False)
+    val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False)
 
     n_features = len(LSTM_FEATURE_COLS)
     model = LSTMModel(n_features=n_features, hidden_size=128, n_layers=2).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, patience=5, factor=0.5
+    )
     criterion = nn.MSELoss()
 
     best_val_loss = float("inf")
-    patience_ctr  = 0
+    patience_ctr = 0
     ckpt_path = os.path.join(MODELS_DIR, "lstm_best.pt")
 
     print(f"  Training LSTM on {DEVICE} ...")
@@ -243,20 +266,24 @@ def run():
 
     for epoch in range(1, EPOCHS + 1):
         train_loss = train_epoch(model, train_loader, optimizer, criterion)
-        val_loss   = eval_epoch(model, val_loader, criterion)
+        val_loss = eval_epoch(model, val_loader, criterion)
         scheduler.step(val_loss)
 
         if epoch % 10 == 0 or epoch == 1:
-            print(f"  Epoch {epoch:3d}/{EPOCHS}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
+            print(
+                f"  Epoch {epoch:3d}/{EPOCHS}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}"
+            )
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            patience_ctr  = 0
+            patience_ctr = 0
             torch.save(model.state_dict(), ckpt_path)
         else:
             patience_ctr += 1
             if patience_ctr >= PATIENCE:
-                print(f"  Early stopping at epoch {epoch}. Best val_loss={best_val_loss:.4f}")
+                print(
+                    f"  Early stopping at epoch {epoch}. Best val_loss={best_val_loss:.4f}"
+                )
                 break
 
     # Load best checkpoint
@@ -270,7 +297,7 @@ def run():
             all_preds.append(model(x.to(DEVICE)).cpu().numpy())
             all_true.append(y.numpy())
 
-    y_pred_norm = np.concatenate(all_preds).flatten()          # normalized scale
+    y_pred_norm = np.concatenate(all_preds).flatten()  # normalized scale
     y_true_norm = np.concatenate(all_true).flatten()
 
     # Inverse-transform from normalized to Rs/MWh
@@ -283,41 +310,59 @@ def run():
     # Segment evaluation — match test block metadata to predictions
     # Build a flat test_df from test_ds date sequence
     test_seq_dates = sorted({**all_train_blocks, **test_blocks}.keys())
-    test_day_dates = test_seq_dates[LOOKBACK_DAYS:][:len(all_preds) * BATCH_SIZE + BATCH_SIZE]
+    test_day_dates = test_seq_dates[LOOKBACK_DAYS:][
+        : len(all_preds) * BATCH_SIZE + BATCH_SIZE
+    ]
     flat_rows = []
-    for i, pred_day in enumerate(test_day_dates[:len(all_preds)]):
-        for b, (p, t) in enumerate(zip(
-            all_preds[i].flatten() if len(all_preds[i].shape) > 1 else [all_preds[i].flatten()],
-            all_true[i].flatten()  if len(all_true[i].shape) > 1 else [all_true[i].flatten()],
-        )):
+    for i, pred_day in enumerate(test_day_dates[: len(all_preds)]):
+        for b, (p, t) in enumerate(
+            zip(
+                all_preds[i].flatten()
+                if len(all_preds[i].shape) > 1
+                else [all_preds[i].flatten()],
+                all_true[i].flatten()
+                if len(all_true[i].shape) > 1
+                else [all_true[i].flatten()],
+            )
+        ):
             flat_rows.append({"date": pred_day, "block": b, "pred": p, "true": t})
 
     # Save
     pd.DataFrame([{"model": "lstm", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False)
+        os.path.join(MODELS_DIR, "metrics.csv"), index=False
+    )
 
     # Build prediction DataFrame with date/block metadata for benchmark compatibility
     test_seq_dates = sorted({**all_train_blocks, **test_blocks}.keys())
     test_day_dates = test_seq_dates[LOOKBACK_DAYS:]
     pred_rows = []
-    for i, pred_day in enumerate(test_day_dates[:len(all_preds)]):
+    for i, pred_day in enumerate(test_day_dates[: len(all_preds)]):
         for b in range(BLOCKS_PER_DAY):
             if i * BLOCKS_PER_DAY + b < len(y_pred):
-                pred_rows.append({
-                    "date": pred_day,
-                    "block": b,
-                    "mcp_rs_per_mwh": y_true[i * BLOCKS_PER_DAY + b] if i * BLOCKS_PER_DAY + b < len(y_true) else np.nan,
-                    "predicted_mcp": y_pred[i * BLOCKS_PER_DAY + b] if i * BLOCKS_PER_DAY + b < len(y_pred) else np.nan,
-                })
+                pred_rows.append(
+                    {
+                        "date": pred_day,
+                        "block": b,
+                        "mcp_rs_per_mwh": y_true[i * BLOCKS_PER_DAY + b]
+                        if i * BLOCKS_PER_DAY + b < len(y_true)
+                        else np.nan,
+                        "predicted_mcp": y_pred[i * BLOCKS_PER_DAY + b]
+                        if i * BLOCKS_PER_DAY + b < len(y_pred)
+                        else np.nan,
+                    }
+                )
     preds_out = pd.DataFrame(pred_rows)
     preds_out.to_csv(os.path.join(PREDS_DIR, "test_predictions.csv"), index=False)
 
-    torch.save({
-        "model_state": model.state_dict(),
-        "mcp_mean": mcp_mean,
-        "mcp_std":  mcp_std,
-        "n_features": n_features,
-    }, os.path.join(MODELS_DIR, "lstm_final.pt"))
+    torch.save(
+        {
+            "model_state": model.state_dict(),
+            "mcp_mean": mcp_mean,
+            "mcp_std": mcp_std,
+            "n_features": n_features,
+        },
+        os.path.join(MODELS_DIR, "lstm_final.pt"),
+    )
 
     print(f"\n[OK] Model + predictions saved to {MODELS_DIR} and {PREDS_DIR}")
 

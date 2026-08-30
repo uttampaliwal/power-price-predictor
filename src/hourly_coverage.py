@@ -13,11 +13,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-import json
-import numpy as np
 import pandas as pd
-from probabilistic import evaluate_conformal
 
+from probabilistic import evaluate_conformal
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "conformal")
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
@@ -109,14 +107,29 @@ def main():
     print("\n  Computing hourly coverage...")
     hourly = compute_hourly_coverage(test, intervals, alpha=0.10)
     print("\n  Hourly Coverage (LightGBM + SCP):")
-    print(hourly[["hour", "PICP", "coverage_gap", "mean_width", "mean_price", "n_samples"]].to_string(index=False))
+    print(
+        hourly[
+            ["hour", "PICP", "coverage_gap", "mean_width", "mean_price", "n_samples"]
+        ].to_string(index=False)
+    )
 
     # Monthly coverage
     print("\n  Computing monthly coverage...")
     monthly = compute_monthly_coverage(test, intervals, alpha=0.10)
     if len(monthly) > 0:
         print("\n  Monthly Coverage (LightGBM + SCP):")
-        print(monthly[["month", "PICP", "coverage_gap", "mean_width", "mean_price", "n_samples"]].to_string(index=False))
+        print(
+            monthly[
+                [
+                    "month",
+                    "PICP",
+                    "coverage_gap",
+                    "mean_width",
+                    "mean_price",
+                    "n_samples",
+                ]
+            ].to_string(index=False)
+        )
 
     # Save results
     hourly.to_csv(os.path.join(RESULTS_DIR, "hourly_coverage.csv"), index=False)
@@ -125,7 +138,8 @@ def main():
 
     # Generate plot data
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -134,40 +148,64 @@ def main():
     ax = axes[0]
     hours = hourly["hour"].values
     picps = hourly["PICP"].values
-    ax.bar(hours, picps, color=['#4CAF50' if 88 <= p <= 92 else '#FF9800' if p > 92 else '#F44336' for p in picps])
-    ax.axhline(y=90, color='red', linestyle='--', linewidth=2, label='Target 90%')
-    ax.set_xlabel('Hour of Day', fontsize=12)
-    ax.set_ylabel('PICP (%)', fontsize=12)
-    ax.set_title('Coverage by Hour', fontsize=14, fontweight='bold')
+    ax.bar(
+        hours,
+        picps,
+        color=[
+            "#4CAF50" if 88 <= p <= 92 else "#FF9800" if p > 92 else "#F44336"
+            for p in picps
+        ],
+    )
+    ax.axhline(y=90, color="red", linestyle="--", linewidth=2, label="Target 90%")
+    ax.set_xlabel("Hour of Day", fontsize=12)
+    ax.set_ylabel("PICP (%)", fontsize=12)
+    ax.set_title("Coverage by Hour", fontsize=14, fontweight="bold")
     ax.set_xticks(range(0, 24, 2))
     ax.legend()
-    ax.grid(axis='y', alpha=0.3)
+    ax.grid(axis="y", alpha=0.3)
 
     # Monthly coverage plot
     if len(monthly) > 0:
         ax = axes[1]
         months = monthly["month"].values
         picps_m = monthly["PICP"].values
-        ax.bar(months, picps_m, color=['#4CAF50' if 88 <= p <= 92 else '#FF9800' if p > 92 else '#F44336' for p in picps_m])
-        ax.axhline(y=90, color='red', linestyle='--', linewidth=2, label='Target 90%')
-        ax.set_xlabel('Month', fontsize=12)
-        ax.set_ylabel('PICP (%)', fontsize=12)
-        ax.set_title('Coverage by Month', fontsize=14, fontweight='bold')
+        ax.bar(
+            months,
+            picps_m,
+            color=[
+                "#4CAF50" if 88 <= p <= 92 else "#FF9800" if p > 92 else "#F44336"
+                for p in picps_m
+            ],
+        )
+        ax.axhline(y=90, color="red", linestyle="--", linewidth=2, label="Target 90%")
+        ax.set_xlabel("Month", fontsize=12)
+        ax.set_ylabel("PICP (%)", fontsize=12)
+        ax.set_title("Coverage by Month", fontsize=14, fontweight="bold")
         ax.set_xticks(range(1, 13))
         ax.legend()
-        ax.grid(axis='y', alpha=0.3)
+        ax.grid(axis="y", alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(os.path.join(RESULTS_DIR, "..", "..", "paper", "cp_hourly_monthly_coverage.png"), dpi=150, bbox_inches='tight')
+    plt.savefig(
+        os.path.join(
+            RESULTS_DIR, "..", "..", "paper", "cp_hourly_monthly_coverage.png"
+        ),
+        dpi=150,
+        bbox_inches="tight",
+    )
     print("\n  Plot saved to paper/cp_hourly_monthly_coverage.png")
 
     # Summary statistics
     print(f"\n  Overall PICP: {hourly['PICP'].mean():.2f}%")
-    print(f"  Hourly PICP range: {hourly['PICP'].min():.2f}% - {hourly['PICP'].max():.2f}%")
+    print(
+        f"  Hourly PICP range: {hourly['PICP'].min():.2f}% - {hourly['PICP'].max():.2f}%"
+    )
     print(f"  Standard deviation: {hourly['PICP'].std():.2f}%")
 
     if len(monthly) > 0:
-        print(f"  Monthly PICP range: {monthly['PICP'].min():.2f}% - {monthly['PICP'].max():.2f}%")
+        print(
+            f"  Monthly PICP range: {monthly['PICP'].min():.2f}% - {monthly['PICP'].max():.2f}%"
+        )
 
     print(f"\n  Results saved to {RESULTS_DIR}")
     print("Done.")

@@ -14,20 +14,21 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
 import json
+
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-import lightgbm as lgb
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 
-from config import FEATURE_COLS, TARGET_COL, DATA_PROCESSED_DIR, PREDS_DIR
+from config import DATA_PROCESSED_DIR, FEATURE_COLS, TARGET_COL
 from probabilistic import (
-    SplitConformal,
     AdaptiveConformal,
     ConformalizedQuantileRegression,
     EnsembleBatchConformal,
     SequentialPredictiveConformal,
+    SplitConformal,
     evaluate_conformal,
 )
 
@@ -36,8 +37,12 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "conforma
 
 def load_data():
     """Load training and holdout data, split into train/cal/test."""
-    train = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "training_features.parquet"))
-    holdout = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "holdout_features.parquet"))
+    train = pd.read_parquet(
+        os.path.join(DATA_PROCESSED_DIR, "training_features.parquet")
+    )
+    holdout = pd.read_parquet(
+        os.path.join(DATA_PROCESSED_DIR, "holdout_features.parquet")
+    )
 
     # Drop rows with NaN
     train = train.dropna(subset=FEATURE_COLS + [TARGET_COL])
@@ -112,21 +117,25 @@ def compute_spike_regime(y_true, threshold_percentile=85):
     return np.where(y_true >= threshold, "spike", "normal")
 
 
-def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X_test, y_test, holdout):
+def run_conformal_for_model(
+    model_name, model, X_train, y_train, X_cal, y_cal, X_test, y_test, holdout
+):
     """Run all five CP methods on a single model."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Conformal Prediction: {model_name.upper()}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     results = {}
     regimes = compute_spike_regime(y_test)
 
     # Method 1: Split Conformal
-    print(f"\n  [1/5] Split Conformal Prediction")
+    print("\n  [1/5] Split Conformal Prediction")
     scp = SplitConformal(alpha=0.10)
     scp.fit(model, X_cal, y_cal)
     intervals_scp = scp.predict(model, X_test)
-    metrics_scp = evaluate_conformal(y_test, intervals_scp, alpha=0.10, regime_labels=regimes)
+    metrics_scp = evaluate_conformal(
+        y_test, intervals_scp, alpha=0.10, regime_labels=regimes
+    )
     results["split_conformal"] = metrics_scp
     print(f"         PICP: {metrics_scp['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_scp['PINAW']:.4f}")
@@ -134,11 +143,13 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         Coverage gap: {metrics_scp['coverage_gap']:+.2f}%")
 
     # Method 2: Adaptive Conformal
-    print(f"\n  [2/5] Adaptive Conformal Prediction")
+    print("\n  [2/5] Adaptive Conformal Prediction")
     acp = AdaptiveConformal(alpha=0.10, gamma=0.005, window=500)
     acp.fit(model, X_cal, y_cal)
     intervals_acp = acp.predict(model, X_test)
-    metrics_acp = evaluate_conformal(y_test, intervals_acp, alpha=0.10, regime_labels=regimes)
+    metrics_acp = evaluate_conformal(
+        y_test, intervals_acp, alpha=0.10, regime_labels=regimes
+    )
     results["adaptive_conformal"] = metrics_acp
     print(f"         PICP: {metrics_acp['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_acp['PINAW']:.4f}")
@@ -146,11 +157,13 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         Coverage gap: {metrics_acp['coverage_gap']:+.2f}%")
 
     # Method 3: CQR
-    print(f"\n  [3/5] Conformalized Quantile Regression")
+    print("\n  [3/5] Conformalized Quantile Regression")
     cqr = ConformalizedQuantileRegression(alpha=0.10, q_lower=0.05, q_upper=0.95)
     cqr.fit_quantiles(X_train, y_train, X_cal, y_cal)
     intervals_cqr = cqr.predict(X_test)
-    metrics_cqr = evaluate_conformal(y_test, intervals_cqr, alpha=0.10, regime_labels=regimes)
+    metrics_cqr = evaluate_conformal(
+        y_test, intervals_cqr, alpha=0.10, regime_labels=regimes
+    )
     results["cqr"] = metrics_cqr
     print(f"         PICP: {metrics_cqr['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_cqr['PINAW']:.4f}")
@@ -158,8 +171,7 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         Coverage gap: {metrics_cqr['coverage_gap']:+.2f}%")
 
     # Method 4: EnbPI
-    print(f"\n  [4/5] Ensemble Batch Prediction Intervals (EnbPI)")
-    from sklearn.linear_model import Ridge as RidgeFactory
+    print("\n  [4/5] Ensemble Batch Prediction Intervals (EnbPI)")
 
     def ridge_factory():
         return Ridge(alpha=1.0)
@@ -167,7 +179,9 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     enbpi = EnsembleBatchConformal(alpha=0.10, n_bootstraps=10, sample_ratio=0.8)
     enbpi.fit(ridge_factory, X_train, y_train)
     intervals_enbpi = enbpi.predict(X_test)
-    metrics_enbpi = evaluate_conformal(y_test, intervals_enbpi, alpha=0.10, regime_labels=regimes)
+    metrics_enbpi = evaluate_conformal(
+        y_test, intervals_enbpi, alpha=0.10, regime_labels=regimes
+    )
     results["enbpi"] = metrics_enbpi
     print(f"         PICP: {metrics_enbpi['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_enbpi['PINAW']:.4f}")
@@ -175,11 +189,13 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         Coverage gap: {metrics_enbpi['coverage_gap']:+.2f}%")
 
     # Method 5: SPCI
-    print(f"\n  [5/5] Sequential Predictive Conformal Inference (SPCI)")
+    print("\n  [5/5] Sequential Predictive Conformal Inference (SPCI)")
     spci = SequentialPredictiveConformal(alpha=0.10, decay=0.99, min_scores=100)
     spci.fit(model, X_cal, y_cal)
     intervals_spci = spci.predict(model, X_test)
-    metrics_spci = evaluate_conformal(y_test, intervals_spci, alpha=0.10, regime_labels=regimes)
+    metrics_spci = evaluate_conformal(
+        y_test, intervals_spci, alpha=0.10, regime_labels=regimes
+    )
     results["spci"] = metrics_spci
     print(f"         PICP: {metrics_spci['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_spci['PINAW']:.4f}")
@@ -202,18 +218,20 @@ def generate_comparison_table(all_results):
         for method in ["split_conformal", "adaptive_conformal", "cqr", "enbpi", "spci"]:
             if method in model_results:
                 m = model_results[method]
-                rows.append({
-                    "Model": model_name,
-                    "Method": method.replace("_", " ").title(),
-                    "PICP (%)": m["PICP"],
-                    "Target (%)": m["nominal_coverage"],
-                    "Gap (%)": m["coverage_gap"],
-                    "PINAW": m["PINAW"],
-                    "Winkler": m["Winkler"],
-                    "ACI": m["ACI"],
-                    "Mean Width": m["mean_width"],
-                    "RMSE": model_results["point_forecast_RMSE"],
-                })
+                rows.append(
+                    {
+                        "Model": model_name,
+                        "Method": method.replace("_", " ").title(),
+                        "PICP (%)": m["PICP"],
+                        "Target (%)": m["nominal_coverage"],
+                        "Gap (%)": m["coverage_gap"],
+                        "PINAW": m["PINAW"],
+                        "Winkler": m["Winkler"],
+                        "ACI": m["ACI"],
+                        "Mean Width": m["mean_width"],
+                        "RMSE": model_results["point_forecast_RMSE"],
+                    }
+                )
 
     df = pd.DataFrame(rows)
     return df
@@ -226,16 +244,18 @@ def generate_regime_table(all_results):
         for method in ["split_conformal", "adaptive_conformal", "cqr", "enbpi", "spci"]:
             if method in model_results:
                 m = model_results[method]
-                rows.append({
-                    "Model": model_name,
-                    "Method": method.replace("_", " ").title(),
-                    "Normal PICP (%)": m.get("regime_normal_PICP", np.nan),
-                    "Normal Width": m.get("regime_normal_width", np.nan),
-                    "Spike PICP (%)": m.get("regime_spike_PICP", np.nan),
-                    "Spike Width": m.get("regime_spike_width", np.nan),
-                    "Normal N": m.get("regime_normal_n", 0),
-                    "Spike N": m.get("regime_spike_n", 0),
-                })
+                rows.append(
+                    {
+                        "Model": model_name,
+                        "Method": method.replace("_", " ").title(),
+                        "Normal PICP (%)": m.get("regime_normal_PICP", np.nan),
+                        "Normal Width": m.get("regime_normal_width", np.nan),
+                        "Spike PICP (%)": m.get("regime_spike_PICP", np.nan),
+                        "Spike Width": m.get("regime_spike_width", np.nan),
+                        "Normal N": m.get("regime_normal_n", 0),
+                        "Spike N": m.get("regime_spike_n", 0),
+                    }
+                )
 
     df = pd.DataFrame(rows)
     return df
@@ -293,7 +313,9 @@ def main():
     print(regime_table.to_string(index=False))
 
     # Save results
-    comp_table.to_csv(os.path.join(RESULTS_DIR, "conformal_comparison.csv"), index=False)
+    comp_table.to_csv(
+        os.path.join(RESULTS_DIR, "conformal_comparison.csv"), index=False
+    )
     regime_table.to_csv(os.path.join(RESULTS_DIR, "conformal_regime.csv"), index=False)
 
     # Save full results as JSON
@@ -303,7 +325,12 @@ def main():
     # Save intervals for plot generation
     for model_name, intervals in all_intervals.items():
         for method, df in intervals.items():
-            df.to_csv(os.path.join(RESULTS_DIR, f"{model_name.lower()}_{method}_intervals.csv"), index=False)
+            df.to_csv(
+                os.path.join(
+                    RESULTS_DIR, f"{model_name.lower()}_{method}_intervals.csv"
+                ),
+                index=False,
+            )
 
     print(f"\n\nResults saved to {RESULTS_DIR}")
     print("Done.")

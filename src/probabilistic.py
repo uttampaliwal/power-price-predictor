@@ -51,9 +51,10 @@ Usage:
     )
 """
 
+from typing import Optional
+
 import numpy as np
 import pandas as pd
-from typing import Optional
 
 
 class SplitConformal:
@@ -96,11 +97,13 @@ class SplitConformal:
         lower = y_pred - self.q_hat
         upper = y_pred + self.q_hat
 
-        return pd.DataFrame({
-            "y_pred": y_pred,
-            "lower": lower,
-            "upper": upper,
-        })
+        return pd.DataFrame(
+            {
+                "y_pred": y_pred,
+                "lower": lower,
+                "upper": upper,
+            }
+        )
 
 
 class AdaptiveConformal:
@@ -159,10 +162,16 @@ class AdaptiveConformal:
         n = len(y_pred)
 
         # Use the most recent 'window' scores for adaptivity
-        recent_scores = self.cal_scores[-self.window:] if len(self.cal_scores) > self.window else self.cal_scores
+        recent_scores = (
+            self.cal_scores[-self.window :]
+            if len(self.cal_scores) > self.window
+            else self.cal_scores
+        )
 
         # Quantile from recent scores (marginal coverage guarantee)
-        q_level = np.ceil((len(recent_scores) + 1) * (1 - self.alpha)) / len(recent_scores)
+        q_level = np.ceil((len(recent_scores) + 1) * (1 - self.alpha)) / len(
+            recent_scores
+        )
         q_hat = np.quantile(recent_scores, np.minimum(q_level, 1.0))
 
         # Adaptive adjustment: scale by local residual magnitude
@@ -179,16 +188,18 @@ class AdaptiveConformal:
         lower = y_pred - q_hat * scale
         upper = y_pred + q_hat * scale
 
-        return pd.DataFrame({
-            "y_pred": y_pred,
-            "lower": lower,
-            "upper": upper,
-        })
+        return pd.DataFrame(
+            {
+                "y_pred": y_pred,
+                "lower": lower,
+                "upper": upper,
+            }
+        )
 
     def update(self, y_true: float, y_pred: float):
         """Online update with new observation (for streaming mode)."""
         score = np.abs(y_true - y_pred)
-        self.cal_scores = np.append(self.cal_scores[-self.window:], [score])
+        self.cal_scores = np.append(self.cal_scores[-self.window :], [score])
 
         # Track running coverage
         in_interval = score <= self.q_hat if self.q_hat else True
@@ -221,7 +232,9 @@ class ConformalizedQuantileRegression:
         - Calibration margin q_hat is fixed (same for all test points)
     """
 
-    def __init__(self, alpha: float = 0.10, q_lower: float = 0.05, q_upper: float = 0.95):
+    def __init__(
+        self, alpha: float = 0.10, q_lower: float = 0.05, q_upper: float = 0.95
+    ):
         """
         Args:
             alpha: target miscoverage rate
@@ -236,9 +249,15 @@ class ConformalizedQuantileRegression:
         self.q_hat = None
         self.cal_scores = None
 
-    def fit_quantiles(self, X_train: np.ndarray, y_train: np.ndarray,
-                      X_cal: np.ndarray, y_cal: np.ndarray,
-                      model_factory=None, **model_kwargs):
+    def fit_quantiles(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_cal: np.ndarray,
+        y_cal: np.ndarray,
+        model_factory=None,
+        **model_kwargs,
+    ):
         """
         Train quantile regression models on training set, then calibrate on held-out.
 
@@ -249,6 +268,7 @@ class ConformalizedQuantileRegression:
         import xgboost as xgb
 
         if model_factory is None:
+
             def model_factory(quantile):
                 return xgb.XGBRegressor(
                     objective="reg:quantileerror",
@@ -300,11 +320,13 @@ class ConformalizedQuantileRegression:
         lower = lower_pred - self.q_hat
         upper = upper_pred + self.q_hat
 
-        return pd.DataFrame({
-            "y_pred": (lower_pred + upper_pred) / 2,
-            "lower": lower,
-            "upper": upper,
-        })
+        return pd.DataFrame(
+            {
+                "y_pred": (lower_pred + upper_pred) / 2,
+                "lower": lower,
+                "upper": upper,
+            }
+        )
 
 
 class QuantileForecaster:
@@ -343,7 +365,8 @@ class QuantileForecaster:
                 **self.xgb_kwargs,
             )
             model.fit(
-                X_train, y_train,
+                X_train,
+                y_train,
                 eval_set=[(X_val, y_val)],
                 verbose=False,
             )
@@ -354,7 +377,7 @@ class QuantileForecaster:
         """Predict quantile intervals."""
         preds = {}
         for q, model in self.models.items():
-            preds[f"P{int(q*100):02d}"] = model.predict(X)
+            preds[f"P{int(q * 100):02d}"] = model.predict(X)
         return pd.DataFrame(preds)
 
 
@@ -394,15 +417,15 @@ def evaluate_conformal(
 
     # PINAW: Prediction Interval Normalized Average Width
     width = upper - lower
-    pinaw = np.mean(width) / np.mean(np.abs(y_true)) if np.mean(np.abs(y_true)) > 0 else 0
+    pinaw = (
+        np.mean(width) / np.mean(np.abs(y_true)) if np.mean(np.abs(y_true)) > 0 else 0
+    )
 
     # Winkler Score (lower is better)
     # For covered points: width
     # For uncovered points: width + (2/alpha) * distance outside
     winkler = np.where(
-        covered,
-        width,
-        width + (2 / alpha) * np.maximum(lower - y_true, y_true - upper)
+        covered, width, width + (2 / alpha) * np.maximum(lower - y_true, y_true - upper)
     )
     winkler_mean = np.mean(winkler)
 
@@ -474,17 +497,19 @@ def compute_naive_prediction_interval(
     y_pred = np.full(n, np.nan)
 
     for i in range(lookback, n):
-        window = y_true[i - lookback:i]
+        window = y_true[i - lookback : i]
         std = np.std(window)
         y_pred[i] = y_true[i - lookback]  # naive forecast
         lower[i] = y_pred[i] - n_std * std
         upper[i] = y_pred[i] + n_std * std
 
-        return pd.DataFrame({
-            "y_pred": y_pred,
-            "lower": lower,
-            "upper": upper,
-        })
+        return pd.DataFrame(
+            {
+                "y_pred": y_pred,
+                "lower": lower,
+                "upper": upper,
+            }
+        )
 
 
 class EnsembleBatchConformal:
@@ -511,7 +536,9 @@ class EnsembleBatchConformal:
         Xu, C. and Xie, Y. (2021). "Ensemble Batch Prediction Intervals."
     """
 
-    def __init__(self, alpha: float = 0.10, n_bootstraps: int = 50, sample_ratio: float = 0.8):
+    def __init__(
+        self, alpha: float = 0.10, n_bootstraps: int = 50, sample_ratio: float = 0.8
+    ):
         """
         Args:
             alpha: miscoverage rate
@@ -596,11 +623,13 @@ class EnsembleBatchConformal:
         lower = y_pred - self.q_hat
         upper = y_pred + self.q_hat
 
-        return pd.DataFrame({
-            "y_pred": y_pred,
-            "lower": lower,
-            "upper": upper,
-        })
+        return pd.DataFrame(
+            {
+                "y_pred": y_pred,
+                "lower": lower,
+                "upper": upper,
+            }
+        )
 
 
 class SequentialPredictiveConformal:
@@ -683,19 +712,25 @@ class SequentialPredictiveConformal:
 
         # Interpolate for smoother quantile
         if q_idx > 0 and cumsum[q_idx - 1] < q_level:
-            frac = (q_level - cumsum[q_idx - 1]) / (cumsum[q_idx] - cumsum[q_idx - 1] + 1e-10)
-            q_hat = sorted_scores[q_idx - 1] + frac * (sorted_scores[q_idx] - sorted_scores[q_idx - 1])
+            frac = (q_level - cumsum[q_idx - 1]) / (
+                cumsum[q_idx] - cumsum[q_idx - 1] + 1e-10
+            )
+            q_hat = sorted_scores[q_idx - 1] + frac * (
+                sorted_scores[q_idx] - sorted_scores[q_idx - 1]
+            )
         else:
             q_hat = sorted_scores[q_idx]
 
         lower = y_pred - q_hat
         upper = y_pred + q_hat
 
-        return pd.DataFrame({
-            "y_pred": y_pred,
-            "lower": lower,
-            "upper": upper,
-        })
+        return pd.DataFrame(
+            {
+                "y_pred": y_pred,
+                "lower": lower,
+                "upper": upper,
+            }
+        )
 
     def update(self, y_true: float, y_pred: float):
         """
@@ -708,7 +743,7 @@ class SequentialPredictiveConformal:
 
         # Apply exponential decay: recent scores get higher weight
         # Weight = decay^(age), where age = 0 for most recent
-        new_weight = self.decay ** 0  # most recent
+        new_weight = self.decay**0  # most recent
         self.weights.append(new_weight)
 
         # Decay all existing weights
@@ -734,11 +769,23 @@ def compute_interval_metrics(y_true: np.ndarray, intervals: pd.DataFrame) -> dic
     mask = ~np.isnan(y_true)
     y_true = y_true[mask]
 
-    p10 = intervals["P10"].values[mask] if "P10" in intervals else intervals["lower"].values[mask]
-    p50 = intervals["P50"].values[mask] if "P50" in intervals else intervals["y_pred"].values[mask]
-    p90 = intervals["P90"].values[mask] if "P90" in intervals else intervals["upper"].values[mask]
+    p10 = (
+        intervals["P10"].values[mask]
+        if "P10" in intervals
+        else intervals["lower"].values[mask]
+    )
+    p50 = (
+        intervals["P50"].values[mask]
+        if "P50" in intervals
+        else intervals["y_pred"].values[mask]
+    )
+    p90 = (
+        intervals["P90"].values[mask]
+        if "P90" in intervals
+        else intervals["upper"].values[mask]
+    )
 
-    from sklearn.metrics import mean_squared_error, mean_absolute_error
+    from sklearn.metrics import mean_absolute_error, mean_squared_error
 
     rmse = np.sqrt(mean_squared_error(y_true, p50))
     mae = mean_absolute_error(y_true, p50)

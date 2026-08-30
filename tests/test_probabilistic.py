@@ -1,16 +1,18 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import numpy as np
 import pandas as pd
+
 from probabilistic import (
-    QuantileForecaster,
-    SplitConformal,
     AdaptiveConformal,
     ConformalizedQuantileRegression,
-    evaluate_conformal,
+    QuantileForecaster,
+    SplitConformal,
     compute_interval_metrics,
+    evaluate_conformal,
 )
 
 
@@ -70,13 +72,16 @@ class TestSplitConformal:
         scp.fit(model, X[500:700], y[500:700])
         result = scp.predict(model, X[700:])
 
-        covered = (y[700:] >= result["lower"].values) & (y[700:] <= result["upper"].values)
+        covered = (y[700:] >= result["lower"].values) & (
+            y[700:] <= result["upper"].values
+        )
         coverage = np.mean(covered)
         # Should be close to 90%
         assert 0.85 < coverage < 0.95
 
     def test_fit_required(self):
         from sklearn.linear_model import LinearRegression
+
         model = LinearRegression()
         scp = SplitConformal()
         try:
@@ -130,11 +135,13 @@ class TestEvaluateConformal:
         np.random.seed(42)
         n = 100
         y_true = np.random.randn(n) * 100 + 500
-        intervals = pd.DataFrame({
-            "y_pred": y_true + np.random.randn(n) * 5,
-            "lower": y_true - 100,
-            "upper": y_true + 100,
-        })
+        intervals = pd.DataFrame(
+            {
+                "y_pred": y_true + np.random.randn(n) * 5,
+                "lower": y_true - 100,
+                "upper": y_true + 100,
+            }
+        )
         result = evaluate_conformal(y_true, intervals, alpha=0.10)
 
         assert "PICP" in result
@@ -147,13 +154,17 @@ class TestEvaluateConformal:
         np.random.seed(42)
         n = 100
         y_true = np.random.randn(n) * 100 + 500
-        intervals = pd.DataFrame({
-            "y_pred": y_true + np.random.randn(n) * 5,
-            "lower": y_true - 100,
-            "upper": y_true + 100,
-        })
+        intervals = pd.DataFrame(
+            {
+                "y_pred": y_true + np.random.randn(n) * 5,
+                "lower": y_true - 100,
+                "upper": y_true + 100,
+            }
+        )
         regimes = np.where(y_true > 500, "spike", "normal")
-        result = evaluate_conformal(y_true, intervals, alpha=0.10, regime_labels=regimes)
+        result = evaluate_conformal(
+            y_true, intervals, alpha=0.10, regime_labels=regimes
+        )
 
         assert "regime_normal_PICP" in result
         assert "regime_spike_PICP" in result
@@ -162,22 +173,26 @@ class TestEvaluateConformal:
 class TestIntervalMetrics:
     def test_perfect_intervals(self):
         y_true = np.array([100, 200, 300, 400, 500], dtype=float)
-        intervals = pd.DataFrame({
-            "P10": y_true - 10,
-            "P50": y_true,
-            "P90": y_true + 10,
-        })
+        intervals = pd.DataFrame(
+            {
+                "P10": y_true - 10,
+                "P50": y_true,
+                "P90": y_true + 10,
+            }
+        )
         m = compute_interval_metrics(y_true, intervals)
         assert m["PICP"] == 100.0
         assert m["P50_RMSE"] == 0.0
 
     def test_wide_intervals(self):
         y_true = np.array([100, 200, 300], dtype=float)
-        intervals = pd.DataFrame({
-            "P10": y_true - 1000,
-            "P50": y_true,
-            "P90": y_true + 1000,
-        })
+        intervals = pd.DataFrame(
+            {
+                "P10": y_true - 1000,
+                "P50": y_true,
+                "P90": y_true + 1000,
+            }
+        )
         m = compute_interval_metrics(y_true, intervals)
         assert m["PICP"] == 100.0
         assert m["PINAW"] > 100  # very wide intervals

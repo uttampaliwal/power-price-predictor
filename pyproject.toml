@@ -79,3 +79,10 @@ addopts = "-v --tb=short"
 
 [tool.setuptools.packages.find]
 include = ["src*"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["FA100", "UP035", "UP006", "E501", "F841", "E731"]

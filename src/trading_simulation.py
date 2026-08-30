@@ -15,20 +15,23 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-import json
 import numpy as np
 import pandas as pd
-from probabilistic import evaluate_conformal
-
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "conformal")
 
 
 def load_intervals_and_data():
     """Load conformal prediction intervals and test data."""
-    test = pd.read_parquet(os.path.join(
-        os.path.dirname(__file__), "..", "data", "processed", "holdout_features.parquet"
-    ))
+    test = pd.read_parquet(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "data",
+            "processed",
+            "holdout_features.parquet",
+        )
+    )
     test = test.dropna(subset=["mcp_rs_per_mwh"])
 
     # Load LightGBM SCP intervals (best performer)
@@ -80,14 +83,26 @@ def strategy_interval_arbitrage(test, intervals, capacity_mw=100):
         sell_mask = day_true > day_upper
 
         # P&L from buy opportunities (buy at actual, sell at predicted)
-        buy_pnl = np.sum(
-            (day_pred[buy_mask] - day_true[buy_mask]) * capacity_mw * day_scale[buy_mask]
-        ) if buy_mask.any() else 0
+        buy_pnl = (
+            np.sum(
+                (day_pred[buy_mask] - day_true[buy_mask])
+                * capacity_mw
+                * day_scale[buy_mask]
+            )
+            if buy_mask.any()
+            else 0
+        )
 
         # P&L from sell opportunities (sell at actual, buy at predicted)
-        sell_pnl = np.sum(
-            (day_true[sell_mask] - day_pred[sell_mask]) * capacity_mw * day_scale[sell_mask]
-        ) if sell_mask.any() else 0
+        sell_pnl = (
+            np.sum(
+                (day_true[sell_mask] - day_pred[sell_mask])
+                * capacity_mw
+                * day_scale[sell_mask]
+            )
+            if sell_mask.any()
+            else 0
+        )
 
         daily_pnl.append(buy_pnl + sell_pnl)
 
@@ -126,7 +141,7 @@ def strategy_confidence_weighted(test, intervals, capacity_mw=100):
 
         # Use naive forecast (yesterday's price) as reference
         if day_start >= 96:
-            prev_true = y_true[day_start - 96:day_start]
+            prev_true = y_true[day_start - 96 : day_start]
             # Direction: predicted vs yesterday
             direction = np.sign(day_pred - prev_true)
             # Actual price change
@@ -209,7 +224,7 @@ def compute_trading_metrics(daily_pnl, capacity_mw=100, name="Strategy"):
     # Profit factor
     gross_profit = np.sum(daily_pnl[daily_pnl > 0])
     gross_loss = np.abs(np.sum(daily_pnl[daily_pnl < 0]))
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
 
     return {
         "strategy": name,
@@ -218,7 +233,9 @@ def compute_trading_metrics(daily_pnl, capacity_mw=100, name="Strategy"):
         "sharpe_ratio": round(sharpe, 2),
         "win_rate_pct": round(win_rate, 2),
         "max_drawdown_rs": round(max_drawdown, 2),
-        "profit_factor": round(profit_factor, 2) if profit_factor != float('inf') else "inf",
+        "profit_factor": round(profit_factor, 2)
+        if profit_factor != float("inf")
+        else "inf",
         "n_trading_days": n_days,
     }
 
@@ -261,7 +278,9 @@ def main():
     metrics_hedged = compute_trading_metrics(pnl_hedged, name="Hedged with SCP")
     print(f"         Unhedged P&L: Rs{metrics_unhedged['total_pnl_millions']}M")
     print(f"         Hedged P&L: Rs{metrics_hedged['total_pnl_millions']}M")
-    print(f"         Hedging Improvement: {metrics_hedged['sharpe_ratio'] - metrics_unhedged['sharpe_ratio']:.2f} Sharpe")
+    print(
+        f"         Hedging Improvement: {metrics_hedged['sharpe_ratio'] - metrics_unhedged['sharpe_ratio']:.2f} Sharpe"
+    )
 
     # Save results
     all_metrics = [metrics_arb, metrics_cw, metrics_unhedged, metrics_hedged]
@@ -269,13 +288,15 @@ def main():
     results_df.to_csv(os.path.join(RESULTS_DIR, "trading_simulation.csv"), index=False)
 
     # Save daily P&L for plotting
-    pd.DataFrame({
-        "date": test["date"].values[:len(pnl_arb)],
-        "interval_arbitrage": pnl_arb,
-        "confidence_weighted": pnl_cw,
-        "unhedged": pnl_unhedged,
-        "hedged": pnl_hedged,
-    }).to_csv(os.path.join(RESULTS_DIR, "daily_pnl.csv"), index=False)
+    pd.DataFrame(
+        {
+            "date": test["date"].values[: len(pnl_arb)],
+            "interval_arbitrage": pnl_arb,
+            "confidence_weighted": pnl_cw,
+            "unhedged": pnl_unhedged,
+            "hedged": pnl_hedged,
+        }
+    ).to_csv(os.path.join(RESULTS_DIR, "daily_pnl.csv"), index=False)
 
     print(f"\n  Results saved to {RESULTS_DIR}")
     print("Done.")

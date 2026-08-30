@@ -1,14 +1,15 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from config import (
+    CITIES,
     FEATURE_COLS,
     FEATURE_COLS_NO_WEATHER,
-    WEATHER_FEATURE_COLS,
-    TARGET_COL,
     MODEL_LIST,
-    CITIES,
+    TARGET_COL,
+    WEATHER_FEATURE_COLS,
 )
 
 
@@ -25,7 +26,9 @@ class TestFeatureCols:
             assert col in FEATURE_COLS
 
     def test_no_weather_length(self):
-        assert len(FEATURE_COLS_NO_WEATHER) == len(FEATURE_COLS) - len(WEATHER_FEATURE_COLS)
+        assert len(FEATURE_COLS_NO_WEATHER) == len(FEATURE_COLS) - len(
+            WEATHER_FEATURE_COLS
+        )
 
 
 class TestConstants:

@@ -8,49 +8,56 @@ Usage:
     python src/models/random_forest_model.py
 """
 
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import joblib
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
-from config import FEATURE_COLS, TARGET_COL as TARGET
 
-DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
-MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "random_forest")
-PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "random_forest")
+from config import FEATURE_COLS
+from config import TARGET_COL as TARGET
+from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
+MODELS_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "..", "models", "random_forest"
+)
+PREDS_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "..", "predictions", "random_forest"
+)
 
 
 def load_data():
     train = pd.read_parquet(os.path.join(DATA_DIR, "training_features.parquet"))
-    test  = pd.read_parquet(os.path.join(DATA_DIR, "holdout_features.parquet"))
+    test = pd.read_parquet(os.path.join(DATA_DIR, "holdout_features.parquet"))
     return train, test
 
 
 def get_xy(df):
     df = df.dropna(subset=FEATURE_COLS + [TARGET])
-    X  = df[FEATURE_COLS].values.astype(float)
-    y  = df[TARGET].values.astype(float)
+    X = df[FEATURE_COLS].values.astype(float)
+    y = df[TARGET].values.astype(float)
     return X, y, df
 
 
 def run():
     os.makedirs(MODELS_DIR, exist_ok=True)
-    os.makedirs(PREDS_DIR,  exist_ok=True)
+    os.makedirs(PREDS_DIR, exist_ok=True)
 
     print("=== Random Forest Model ===\n")
     train_df, test_df = load_data()
 
     # Time-series val split: last 60 days of training
-    cutoff   = train_df["date"].max() - pd.Timedelta(days=60)
-    val_df   = train_df[train_df["date"] >  cutoff]
+    cutoff = train_df["date"].max() - pd.Timedelta(days=60)
+    val_df = train_df[train_df["date"] > cutoff]
     train_df = train_df[train_df["date"] <= cutoff]
 
     X_train, y_train, _ = get_xy(train_df)
-    X_val,   y_val,   _ = get_xy(val_df)
-    X_test,  y_test, test_clean = get_xy(test_df)
+    X_val, y_val, _ = get_xy(val_df)
+    X_test, y_test, test_clean = get_xy(test_df)
 
     print(f"  Train: {len(X_train):,}  Val: {len(X_val):,}  Test: {len(X_test):,}")
 
@@ -72,22 +79,25 @@ def run():
     print_metrics_table("Random Forest (Holdout Test)", metrics)
 
     by_season = evaluate_by_segment(test_clean, y_pred, "season")
-    by_hour   = evaluate_by_segment(test_clean, y_pred, "hour_bucket")
+    by_hour = evaluate_by_segment(test_clean, y_pred, "hour_bucket")
     print("\nBy Season:\n", by_season.to_string(index=False))
     print("\nBy Hour Bucket:\n", by_hour.to_string(index=False))
 
     # Feature importance
-    fi = pd.DataFrame({
-        "feature": FEATURE_COLS,
-        "importance": model.feature_importances_,
-    }).sort_values("importance", ascending=False)
+    fi = pd.DataFrame(
+        {
+            "feature": FEATURE_COLS,
+            "importance": model.feature_importances_,
+        }
+    ).sort_values("importance", ascending=False)
     print("\nTop 10 Feature Importances:\n", fi.head(10).to_string(index=False))
     fi.to_csv(os.path.join(MODELS_DIR, "feature_importance.csv"), index=False)
 
     # Save
     joblib.dump(model, os.path.join(MODELS_DIR, "random_forest.pkl"))
     pd.DataFrame([{"model": "random_forest", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False)
+        os.path.join(MODELS_DIR, "metrics.csv"), index=False
+    )
     by_season.to_csv(os.path.join(MODELS_DIR, "metrics_by_season.csv"), index=False)
     by_hour.to_csv(os.path.join(MODELS_DIR, "metrics_by_hour.csv"), index=False)
 

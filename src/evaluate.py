@@ -15,15 +15,17 @@ Functions:
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
-    mean_squared_error, mean_absolute_error,
-    roc_auc_score, f1_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    roc_auc_score,
 )
-
 
 BLOCKS_PER_DAY = 96
 
 
 # Regression Metrics
+
 
 def compute_regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     """
@@ -41,7 +43,7 @@ def compute_regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         return {m: np.nan for m in ["RMSE", "MAE", "MAPE", "R2", "WAPE"]}
 
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    mae  = mean_absolute_error(y_true, y_pred)
+    mae = mean_absolute_error(y_true, y_pred)
 
     # MAPE — guard against near-zero true values
     nonzero = y_true != 0
@@ -54,16 +56,16 @@ def compute_regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     wape = np.sum(np.abs(y_true - y_pred)) / np.sum(np.abs(y_true)) * 100
 
     return {
-        "RMSE":  round(rmse, 4),
-        "MAE":   round(mae,  4),
-        "MAPE":  round(mape, 4),
-        "R2":    round(r2,   4),
-        "WAPE":  round(wape, 4),
+        "RMSE": round(rmse, 4),
+        "MAE": round(mae, 4),
+        "MAPE": round(mape, 4),
+        "R2": round(r2, 4),
+        "WAPE": round(wape, 4),
     }
 
 
-
 # Classification Metrics (price direction: up vs down vs flat)
+
 
 def price_direction(series: np.ndarray, threshold_pct: float = 1.0) -> np.ndarray:
     """
@@ -116,9 +118,18 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
 
     # Direction accuracy (only for elements with valid direction labels, i.e., from index 96 onwards)
     if len(true_dir) > BLOCKS_PER_DAY:
-        dir_mask = ~np.isnan(y_true[BLOCKS_PER_DAY:]) & ~np.isnan(y_pred[BLOCKS_PER_DAY:])
+        dir_mask = ~np.isnan(y_true[BLOCKS_PER_DAY:]) & ~np.isnan(
+            y_pred[BLOCKS_PER_DAY:]
+        )
         if dir_mask.sum() > 0:
-            dir_accuracy = round(np.mean(true_dir[BLOCKS_PER_DAY:][dir_mask] == pred_dir[BLOCKS_PER_DAY:][dir_mask]) * 100, 4)
+            dir_accuracy = round(
+                np.mean(
+                    true_dir[BLOCKS_PER_DAY:][dir_mask]
+                    == pred_dir[BLOCKS_PER_DAY:][dir_mask]
+                )
+                * 100,
+                4,
+            )
         else:
             dir_accuracy = np.nan
     else:
@@ -150,7 +161,7 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
 
     return {
         "AUC_ROC": round(auc, 4) if not np.isnan(auc) else np.nan,
-        "F1":      round(f1_score(true_dir, pred_dir, zero_division=0), 4),
+        "F1": round(f1_score(true_dir, pred_dir, zero_division=0), 4),
         "Dir_Accuracy": dir_accuracy,
     }
 
@@ -163,6 +174,7 @@ def compute_all_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
 
 # Segment-level Evaluation
+
 
 def evaluate_by_segment(
     df: pd.DataFrame,
@@ -183,7 +195,9 @@ def evaluate_by_segment(
     df["_pred"] = y_pred
     rows = []
     for seg_val, grp in df.groupby(segment_col):
-        m = compute_regression_metrics(grp["mcp_rs_per_mwh"].values, grp["_pred"].values)
+        m = compute_regression_metrics(
+            grp["mcp_rs_per_mwh"].values, grp["_pred"].values
+        )
         rows.append({"segment": f"{segment_col}={seg_val}", **m})
     # Overall
     overall = compute_regression_metrics(df["mcp_rs_per_mwh"].values, y_pred)
@@ -192,9 +206,9 @@ def evaluate_by_segment(
 
 
 def print_metrics_table(model_name: str, metrics: dict):
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"  Model: {model_name}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     for k, v in metrics.items():
         print(f"  {k:<12}: {v}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")

@@ -20,18 +20,18 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-import numpy as np
-import pandas as pd
 import mlflow
 import mlflow.sklearn
-from mlflow.models import infer_signature
+import pandas as pd
 
 from config import (
-    MODELS_DIR, MODELS_NO_WEATHER_DIR, PREDS_DIR, DATA_PROCESSED_DIR,
-    FEATURE_COLS, FEATURE_COLS_NO_WEATHER, TARGET_COL,
+    FEATURE_COLS,
+    FEATURE_COLS_NO_WEATHER,
+    MODELS_DIR,
+    MODELS_NO_WEATHER_DIR,
+    PREDS_DIR,
 )
 from evaluate import compute_all_metrics
-
 
 EXPERIMENT_NAME = "IEX DAM Price Forecasting"
 
@@ -46,7 +46,9 @@ def log_model_run(model_name: str, use_weather: bool = True):
     weather_str = "with_weather" if use_weather else "no_weather"
 
     base_dir = MODELS_DIR if use_weather else MODELS_NO_WEATHER_DIR
-    pred_dir = os.path.join(PREDS_DIR, f"{model_name}{'_no_weather' if not use_weather else ''}")
+    pred_dir = os.path.join(
+        PREDS_DIR, f"{model_name}{'_no_weather' if not use_weather else ''}"
+    )
 
     # Load metrics
     metrics_path = os.path.join(base_dir, model_name, "metrics.csv")
@@ -80,9 +82,23 @@ def log_model_run(model_name: str, use_weather: bool = True):
 
     # Model-specific params
     if model_name == "xgboost":
-        params.update({"max_depth": 7, "learning_rate": 0.05, "n_estimators": 1000, "early_stopping_rounds": 50})
+        params.update(
+            {
+                "max_depth": 7,
+                "learning_rate": 0.05,
+                "n_estimators": 1000,
+                "early_stopping_rounds": 50,
+            }
+        )
     elif model_name == "lightgbm":
-        params.update({"num_leaves": 63, "max_depth": 7, "learning_rate": 0.05, "min_child_samples": 20})
+        params.update(
+            {
+                "num_leaves": 63,
+                "max_depth": 7,
+                "learning_rate": 0.05,
+                "min_child_samples": 20,
+            }
+        )
     elif model_name == "random_forest":
         params.update({"n_estimators": 200, "max_depth": None})
     elif model_name == "ridge":
@@ -146,7 +162,7 @@ def log_backtest_results(model_name: str = "xgboost"):
             if f.endswith(".csv") or f.endswith(".png"):
                 mlflow.log_artifact(os.path.join(bt_dir, f))
 
-        print(f"  [OK] Logged backtest results → MLflow")
+        print("  [OK] Logged backtest results → MLflow")
 
 
 def show_experiments():
@@ -159,18 +175,22 @@ def show_experiments():
         return
 
     runs = client.search_runs(experiment_ids=[experiment.experiment_id])
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"  Experiment: {EXPERIMENT_NAME} (ID: {experiment.experiment_id})")
     print(f"  Total runs: {len(runs)}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     for run in runs:
         m = run.data.metrics
         p = run.data.params
         print(f"  Run: {run.info.run_name}")
-        print(f"    Model: {p.get('model_name', '?')} | Weather: {p.get('use_weather', '?')}")
-        print(f"    R²={m.get('R2', '?'):.4f}  RMSE={m.get('RMSE', '?'):.1f}  "
-              f"WAPE={m.get('WAPE', '?'):.1f}%  AUC={m.get('AUC_ROC', '?')}")
+        print(
+            f"    Model: {p.get('model_name', '?')} | Weather: {p.get('use_weather', '?')}"
+        )
+        print(
+            f"    R²={m.get('R2', '?'):.4f}  RMSE={m.get('RMSE', '?'):.1f}  "
+            f"WAPE={m.get('WAPE', '?'):.1f}%  AUC={m.get('AUC_ROC', '?')}"
+        )
         print()
 
 
@@ -178,7 +198,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--log-all", action="store_true", help="Log all trained models")
-    group.add_argument("--log-backtest", action="store_true", help="Log backtest results")
+    group.add_argument(
+        "--log-backtest", action="store_true", help="Log backtest results"
+    )
     group.add_argument("--show", action="store_true", help="Show tracked experiments")
     args = parser.parse_args()
 

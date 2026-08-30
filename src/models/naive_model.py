@@ -10,23 +10,26 @@ Usage:
     python src/models/naive_model.py
 """
 
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 import pandas as pd
+
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
 
-DATA_DIR   = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "naive")
-PREDS_DIR  = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "naive")
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "naive")
 
 
 def load_data():
     train_path = os.path.join(DATA_DIR, "training_features.parquet")
-    test_path  = os.path.join(DATA_DIR, "holdout_features.parquet")
+    test_path = os.path.join(DATA_DIR, "holdout_features.parquet")
     train = pd.read_parquet(train_path)
-    test  = pd.read_parquet(test_path)
+    test = pd.read_parquet(test_path)
     return train, test
 
 
@@ -37,7 +40,7 @@ def predict(test_df: pd.DataFrame) -> np.ndarray:
 
 def run():
     os.makedirs(MODELS_DIR, exist_ok=True)
-    os.makedirs(PREDS_DIR,  exist_ok=True)
+    os.makedirs(PREDS_DIR, exist_ok=True)
 
     print("=== Naive Baseline Model ===\n")
     train_df, test_df = load_data()
@@ -53,7 +56,7 @@ def run():
 
     # Segment breakdown
     by_season = evaluate_by_segment(test_df, y_pred, segment_col="season")
-    by_hour   = evaluate_by_segment(test_df, y_pred, segment_col="hour_bucket")
+    by_hour = evaluate_by_segment(test_df, y_pred, segment_col="hour_bucket")
     print("\nBy Season:\n", by_season.to_string(index=False))
     print("\nBy Hour Bucket:\n", by_hour.to_string(index=False))
 

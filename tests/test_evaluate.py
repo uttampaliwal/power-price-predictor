@@ -1,15 +1,17 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import numpy as np
 import pandas as pd
+
 from evaluate import (
-    compute_regression_metrics,
-    compute_classification_metrics,
     compute_all_metrics,
-    price_direction,
+    compute_classification_metrics,
+    compute_regression_metrics,
     evaluate_by_segment,
+    price_direction,
 )
 
 
@@ -62,16 +64,27 @@ class TestAllMetrics:
     def test_returns_all_keys(self):
         y = np.array([100, 200, 300, 400, 500] * 20, dtype=float)
         m = compute_all_metrics(y, y)
-        expected = {"RMSE", "MAE", "MAPE", "R2", "WAPE", "AUC_ROC", "F1", "Dir_Accuracy"}
+        expected = {
+            "RMSE",
+            "MAE",
+            "MAPE",
+            "R2",
+            "WAPE",
+            "AUC_ROC",
+            "F1",
+            "Dir_Accuracy",
+        }
         assert set(m.keys()) == expected
 
 
 class TestEvaluateBySegment:
     def test_by_season(self):
-        df = pd.DataFrame({
-            "mcp_rs_per_mwh": [100, 200, 300, 400],
-            "season": ["summer", "summer", "winter", "winter"],
-        })
+        df = pd.DataFrame(
+            {
+                "mcp_rs_per_mwh": [100, 200, 300, 400],
+                "season": ["summer", "summer", "winter", "winter"],
+            }
+        )
         y_pred = np.array([110, 210, 290, 390], dtype=float)
         result = evaluate_by_segment(df, y_pred, "season")
         assert len(result) == 3

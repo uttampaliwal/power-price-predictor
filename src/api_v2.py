@@ -16,18 +16,20 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
+import json
 import time
+from typing import List
+
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
-import xgboost as xgb
-import lightgbm as lgb
 
-from config import FEATURE_COLS, TARGET_COL, DATA_PROCESSED_DIR
-from probabilistic import SplitConformal, AdaptiveConformal
+from config import DATA_PROCESSED_DIR, FEATURE_COLS, TARGET_COL
+from probabilistic import AdaptiveConformal, SplitConformal
 
 app = FastAPI(
     title="Power Price Predictor",
@@ -91,7 +93,9 @@ async def load_models():
     print("Loading models and calibration data...")
 
     # Load training data for calibration
-    train = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "training_features.parquet"))
+    train = pd.read_parquet(
+        os.path.join(DATA_PROCESSED_DIR, "training_features.parquet")
+    )
     train = train.dropna(subset=FEATURE_COLS + [TARGET_COL])
 
     # Split into train and calibration
@@ -103,18 +107,29 @@ async def load_models():
 
     # Train XGBoost
     xgb_model = xgb.XGBRegressor(
-        n_estimators=500, max_depth=7, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8, min_child_weight=5,
-        n_jobs=-1, random_state=42,
+        n_estimators=500,
+        max_depth=7,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        min_child_weight=5,
+        n_jobs=-1,
+        random_state=42,
     )
     xgb_model.fit(X_train, y_train, verbose=False)
     _models["xgboost"] = xgb_model
 
     # Train LightGBM
     lgb_model = lgb.LGBMRegressor(
-        n_estimators=500, max_depth=7, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8, min_child_weight=5,
-        n_jobs=-1, random_state=42, verbose=-1,
+        n_estimators=500,
+        max_depth=7,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        min_child_weight=5,
+        n_jobs=-1,
+        random_state=42,
+        verbose=-1,
     )
     lgb_model.fit(X_train, y_train)
     _models["lightgbm"] = lgb_model
@@ -149,7 +164,9 @@ async def health():
 async def predict(request: PredictionRequest):
     """Generate point forecast with conformal prediction interval."""
     if request.model_name not in _models:
-        raise HTTPException(status_code=400, detail=f"Model '{request.model_name}' not found")
+        raise HTTPException(
+            status_code=400, detail=f"Model '{request.model_name}' not found"
+        )
 
     model = _models[request.model_name]
     features = np.array(request.features).reshape(1, -1)
@@ -157,7 +174,7 @@ async def predict(request: PredictionRequest):
     if features.shape[1] != len(FEATURE_COLS):
         raise HTTPException(
             status_code=400,
-            detail=f"Expected {len(FEATURE_COLS)} features, got {features.shape[1]}"
+            detail=f"Expected {len(FEATURE_COLS)} features, got {features.shape[1]}",
         )
 
     start = time.time()
@@ -197,7 +214,11 @@ async def get_metrics(model_name: str, method: str = "split_conformal"):
     """Get conformal prediction metrics for a model."""
     # Load from results file
     results_path = os.path.join(
-        os.path.dirname(__file__), "..", "results", "conformal", "conformal_results.json"
+        os.path.dirname(__file__),
+        "..",
+        "results",
+        "conformal",
+        "conformal_results.json",
     )
     if not os.path.exists(results_path):
         raise HTTPException(status_code=404, detail="Metrics not found")
@@ -235,4 +256,5 @@ async def list_models():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

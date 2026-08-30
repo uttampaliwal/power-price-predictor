@@ -18,25 +18,28 @@ Endpoints:
     GET  /metrics/{model}     — Get model metrics
 """
 
+import logging
 import os
 import sys
-import logging
 from datetime import date, timedelta
 from typing import Optional
 
+import joblib
 import numpy as np
 import pandas as pd
-import joblib
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, os.path.dirname(__file__))
 
 from config import (
-    FEATURE_COLS, FEATURE_COLS_NO_WEATHER, TARGET_COL,
-    MODELS_DIR, MODELS_NO_WEATHER_DIR, DATA_RAW_DIR, DATA_PROCESSED_DIR,
     CITIES,
+    DATA_RAW_DIR,
+    FEATURE_COLS,
+    FEATURE_COLS_NO_WEATHER,
+    MODELS_DIR,
+    MODELS_NO_WEATHER_DIR,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,6 +65,8 @@ def _get_history(split: str = "holdout") -> pd.DataFrame:
     if split not in _history_cache:
         _history_cache[split] = _load_history(split)
     return _history_cache[split]
+
+
 _model_cache: dict = {}
 
 
@@ -77,6 +82,7 @@ def _load_model(name: str, use_weather: bool = True):
 
     if name == "xgboost":
         import xgboost as xgb
+
         path = os.path.join(base, "xgboost.json")
         if not os.path.exists(path):
             raise FileNotFoundError(f"XGBoost model not found: {path}")
@@ -84,18 +90,26 @@ def _load_model(name: str, use_weather: bool = True):
         model.load_model(path)
     elif name == "lightgbm":
         import lightgbm as lgb
-        path = os.path.join(base, "lightgbm.txt" if use_weather else "lightgbm_no_weather.txt")
+
+        path = os.path.join(
+            base, "lightgbm.txt" if use_weather else "lightgbm_no_weather.txt"
+        )
         if not os.path.exists(path):
             raise FileNotFoundError(f"LightGBM model not found: {path}")
         model = lgb.LGBMRegressor()
         model.booster_ = lgb.Booster(model_file=path)
     elif name == "ridge":
-        path = os.path.join(base, "ridge_pipeline.pkl" if use_weather else "ridge_no_weather_pipeline.pkl")
+        path = os.path.join(
+            base,
+            "ridge_pipeline.pkl" if use_weather else "ridge_no_weather_pipeline.pkl",
+        )
         if not os.path.exists(path):
             raise FileNotFoundError(f"Ridge model not found: {path}")
         model = joblib.load(path)
     elif name == "random_forest":
-        path = os.path.join(base, "random_forest.pkl" if use_weather else "random_forest_no_weather.pkl")
+        path = os.path.join(
+            base, "random_forest.pkl" if use_weather else "random_forest_no_weather.pkl"
+        )
         if not os.path.exists(path):
             raise FileNotFoundError(f"Random Forest model not found: {path}")
         model = joblib.load(path)
@@ -109,7 +123,9 @@ def _load_model(name: str, use_weather: bool = True):
 # ─── Feature Construction ───────────────────────────────────────────────
 def _load_history(split: str = "holdout") -> pd.DataFrame:
     raw_dir = os.path.join(DATA_RAW_DIR, split)
-    csvs = sorted([f for f in os.listdir(raw_dir) if f.endswith(".csv") and f.startswith("dam_")])
+    csvs = sorted(
+        [f for f in os.listdir(raw_dir) if f.endswith(".csv") and f.startswith("dam_")]
+    )
     if not csvs:
         raise FileNotFoundError(f"No DAM CSVs found in {raw_dir}")
     dfs = [pd.read_csv(os.path.join(raw_dir, f), parse_dates=["date"]) for f in csvs]
@@ -127,13 +143,30 @@ def _load_weather(split: str = "holdout") -> pd.DataFrame:
     return pd.read_csv(path, parse_dates=["time"])
 
 
-def _build_features_for_date(target_date: date, history: pd.DataFrame, weather: Optional[pd.DataFrame]) -> pd.DataFrame:
+def _build_features_for_date(
+    target_date: date, history: pd.DataFrame, weather: Optional[pd.DataFrame]
+) -> pd.DataFrame:
     """Build feature row for a single prediction date (all 96 blocks)."""
     import holidays
 
     BLOCKS_PER_DAY = 96
-    season_map = {1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 2, 10: 3, 11: 3, 12: 0}
-    hour_bucket = lambda h: 0 if h < 6 else (1 if h < 10 else (2 if h < 14 else (3 if h < 18 else 4)))
+    season_map = {
+        1: 0,
+        2: 0,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 2,
+        7: 2,
+        8: 2,
+        9: 2,
+        10: 3,
+        11: 3,
+        12: 0,
+    }
+    hour_bucket = lambda h: (
+        0 if h < 6 else (1 if h < 10 else (2 if h < 14 else (3 if h < 18 else 4)))
+    )
 
     target_dt = pd.Timestamp(target_date)
     indian_holidays = holidays.India(years=target_date.year)
@@ -152,18 +185,18 @@ def _build_features_for_date(target_date: date, history: pd.DataFrame, weather: 
         mcp_lag_7d = get_block_mcp(lag7_date, block)
 
         mask_7d = (
-            (history["block"] == block) &
-            (history["date"].dt.date >= target_date - timedelta(days=7)) &
-            (history["date"].dt.date < target_date)
+            (history["block"] == block)
+            & (history["date"].dt.date >= target_date - timedelta(days=7))
+            & (history["date"].dt.date < target_date)
         )
         recent_7 = history[mask_7d]["mcp_rs_per_mwh"]
         rolling_7d_mean = recent_7.mean() if len(recent_7) > 0 else np.nan
         rolling_7d_std = recent_7.std() if len(recent_7) > 1 else 0.0
 
         mask_30d = (
-            (history["block"] == block) &
-            (history["date"].dt.date >= target_date - timedelta(days=30)) &
-            (history["date"].dt.date < target_date)
+            (history["block"] == block)
+            & (history["date"].dt.date >= target_date - timedelta(days=30))
+            & (history["date"].dt.date < target_date)
         )
         recent_30 = history[mask_30d]["mcp_rs_per_mwh"]
         rolling_30d_mean = recent_30.mean() if len(recent_30) > 0 else np.nan
@@ -193,7 +226,9 @@ def _build_features_for_date(target_date: date, history: pd.DataFrame, weather: 
             for city in CITIES:
                 city_weather = weather[weather["city"] == city]
                 match = city_weather[city_weather["time"] == ts]
-                row[f"{city}_apparent_temp"] = float(match["apparent_temp"].values[0]) if len(match) else np.nan
+                row[f"{city}_apparent_temp"] = (
+                    float(match["apparent_temp"].values[0]) if len(match) else np.nan
+                )
         else:
             row["delhi_apparent_temp"] = np.nan
             row["mumbai_apparent_temp"] = np.nan
@@ -205,7 +240,9 @@ def _build_features_for_date(target_date: date, history: pd.DataFrame, weather: 
 
 # ─── Pydantic Models ────────────────────────────────────────────────────
 class PredictRequest(BaseModel):
-    model_name: str = Field("xgboost", description="Model name: xgboost, lightgbm, random_forest, ridge")
+    model_name: str = Field(
+        "xgboost", description="Model name: xgboost, lightgbm, random_forest, ridge"
+    )
     target_date: date = Field(..., description="Date to predict (YYYY-MM-DD)")
     use_weather: bool = Field(True, description="Use weather features")
 
@@ -249,11 +286,13 @@ def list_models():
         for use_wx in [True, False]:
             try:
                 _load_model(name, use_wx)
-                available.append({
-                    "name": name,
-                    "use_weather": use_wx,
-                    "type": "with-weather" if use_wx else "no-weather",
-                })
+                available.append(
+                    {
+                        "name": name,
+                        "use_weather": use_wx,
+                        "type": "with-weather" if use_wx else "no-weather",
+                    }
+                )
             except (FileNotFoundError, ValueError):
                 pass
     return {"models": available}
@@ -275,11 +314,16 @@ def predict(req: PredictRequest):
 
     preds = model.predict(X)
 
-    time_blocks = [f"{h:02d}:{m:02d} - {h:02d}:{m+15:02d}"
-                   for h in range(24) for m in range(0, 60, 15)]
+    time_blocks = [
+        f"{h:02d}:{m:02d} - {h:02d}:{m + 15:02d}"
+        for h in range(24)
+        for m in range(0, 60, 15)
+    ]
 
     predictions = [
-        Prediction(block=i, time_block=time_blocks[i], predicted_mcp=round(float(preds[i]), 2))
+        Prediction(
+            block=i, time_block=time_blocks[i], predicted_mcp=round(float(preds[i]), 2)
+        )
         for i in range(len(preds))
     ]
 
@@ -323,16 +367,21 @@ def predict_range(req: PredictRangeRequest):
         X = features[feature_cols].values
         preds = model.predict(X)
 
-        time_blocks = [f"{h:02d}:{m:02d} - {h:02d}:{m+15:02d}"
-                       for h in range(24) for m in range(0, 60, 15)]
+        time_blocks = [
+            f"{h:02d}:{m:02d} - {h:02d}:{m + 15:02d}"
+            for h in range(24)
+            for m in range(0, 60, 15)
+        ]
 
         for i in range(len(preds)):
-            all_preds.append({
-                "date": str(current),
-                "block": i,
-                "time_block": time_blocks[i],
-                "predicted_mcp": round(float(preds[i]), 2),
-            })
+            all_preds.append(
+                {
+                    "date": str(current),
+                    "block": i,
+                    "time_block": time_blocks[i],
+                    "predicted_mcp": round(float(preds[i]), 2),
+                }
+            )
         current += timedelta(days=1)
 
     return {
@@ -378,14 +427,19 @@ def compare(req: CompareRequest):
 @app.get("/metrics/{model_name}")
 def get_metrics(model_name: str):
     results = {}
-    for split_dir, label in [(MODELS_DIR, "with_weather"), (MODELS_NO_WEATHER_DIR, "no_weather")]:
+    for split_dir, label in [
+        (MODELS_DIR, "with_weather"),
+        (MODELS_NO_WEATHER_DIR, "no_weather"),
+    ]:
         metrics_path = os.path.join(split_dir, model_name, "metrics.csv")
         if os.path.exists(metrics_path):
             df = pd.read_csv(metrics_path)
             results[label] = df.to_dict(orient="records")[0] if len(df) > 0 else {}
 
     if not results:
-        raise HTTPException(status_code=404, detail=f"No metrics found for model: {model_name}")
+        raise HTTPException(
+            status_code=404, detail=f"No metrics found for model: {model_name}"
+        )
 
     return {"model_name": model_name, "metrics": results}
 
@@ -393,4 +447,5 @@ def get_metrics(model_name: str):
 # ─── CLI ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
