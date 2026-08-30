@@ -1,7 +1,7 @@
 """
 run_conformal.py — Run conformal prediction evaluation on all benchmark models.
 
-Applies Split Conformal, Adaptive Conformal, and CQR to each model.
+Applies Split Conformal, Adaptive Conformal, CQR, EnbPI, and SPCI to each model.
 Generates coverage analysis, comparison tables, and plot data.
 
 Usage:
@@ -26,6 +26,8 @@ from probabilistic import (
     SplitConformal,
     AdaptiveConformal,
     ConformalizedQuantileRegression,
+    EnsembleBatchConformal,
+    SequentialPredictiveConformal,
     evaluate_conformal,
 )
 
@@ -63,7 +65,7 @@ def train_xgboost(X_train, y_train):
     y_tr, y_val = y_train[:split], y_train[split:]
 
     model = xgb.XGBRegressor(
-        n_estimators=1000,
+        n_estimators=500,
         max_depth=7,
         learning_rate=0.05,
         subsample=0.8,
@@ -83,7 +85,7 @@ def train_lightgbm(X_train, y_train):
     y_tr, y_val = y_train[:split], y_train[split:]
 
     model = lgb.LGBMRegressor(
-        n_estimators=1000,
+        n_estimators=500,
         max_depth=7,
         learning_rate=0.05,
         subsample=0.8,
@@ -111,7 +113,7 @@ def compute_spike_regime(y_true, threshold_percentile=85):
 
 
 def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X_test, y_test, holdout):
-    """Run all three CP methods on a single model."""
+    """Run all five CP methods on a single model."""
     print(f"\n{'='*60}")
     print(f"  Conformal Prediction: {model_name.upper()}")
     print(f"{'='*60}")
@@ -120,7 +122,7 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     regimes = compute_spike_regime(y_test)
 
     # Method 1: Split Conformal
-    print(f"\n  [1/3] Split Conformal Prediction")
+    print(f"\n  [1/5] Split Conformal Prediction")
     scp = SplitConformal(alpha=0.10)
     scp.fit(model, X_cal, y_cal)
     intervals_scp = scp.predict(model, X_test)
@@ -132,7 +134,7 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         Coverage gap: {metrics_scp['coverage_gap']:+.2f}%")
 
     # Method 2: Adaptive Conformal
-    print(f"\n  [2/3] Adaptive Conformal Prediction")
+    print(f"\n  [2/5] Adaptive Conformal Prediction")
     acp = AdaptiveConformal(alpha=0.10, gamma=0.005, window=500)
     acp.fit(model, X_cal, y_cal)
     intervals_acp = acp.predict(model, X_test)
@@ -144,7 +146,7 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         Coverage gap: {metrics_acp['coverage_gap']:+.2f}%")
 
     # Method 3: CQR
-    print(f"\n  [3/3] Conformalized Quantile Regression")
+    print(f"\n  [3/5] Conformalized Quantile Regression")
     cqr = ConformalizedQuantileRegression(alpha=0.10, q_lower=0.05, q_upper=0.95)
     cqr.fit_quantiles(X_train, y_train, X_cal, y_cal)
     intervals_cqr = cqr.predict(X_test)
@@ -154,6 +156,35 @@ def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X
     print(f"         PINAW: {metrics_cqr['PINAW']:.4f}")
     print(f"         Winkler: {metrics_cqr['Winkler']:.2f}")
     print(f"         Coverage gap: {metrics_cqr['coverage_gap']:+.2f}%")
+
+    # Method 4: EnbPI
+    print(f"\n  [4/5] Ensemble Batch Prediction Intervals (EnbPI)")
+    from sklearn.linear_model import Ridge as RidgeFactory
+
+    def ridge_factory():
+        return Ridge(alpha=1.0)
+
+    enbpi = EnsembleBatchConformal(alpha=0.10, n_bootstraps=10, sample_ratio=0.8)
+    enbpi.fit(ridge_factory, X_train, y_train)
+    intervals_enbpi = enbpi.predict(X_test)
+    metrics_enbpi = evaluate_conformal(y_test, intervals_enbpi, alpha=0.10, regime_labels=regimes)
+    results["enbpi"] = metrics_enbpi
+    print(f"         PICP: {metrics_enbpi['PICP']:.2f}%  (target: 90.0%)")
+    print(f"         PINAW: {metrics_enbpi['PINAW']:.4f}")
+    print(f"         Winkler: {metrics_enbpi['Winkler']:.2f}")
+    print(f"         Coverage gap: {metrics_enbpi['coverage_gap']:+.2f}%")
+
+    # Method 5: SPCI
+    print(f"\n  [5/5] Sequential Predictive Conformal Inference (SPCI)")
+    spci = SequentialPredictiveConformal(alpha=0.10, decay=0.99, min_scores=100)
+    spci.fit(model, X_cal, y_cal)
+    intervals_spci = spci.predict(model, X_test)
+    metrics_spci = evaluate_conformal(y_test, intervals_spci, alpha=0.10, regime_labels=regimes)
+    results["spci"] = metrics_spci
+    print(f"         PICP: {metrics_spci['PICP']:.2f}%  (target: 90.0%)")
+    print(f"         PINAW: {metrics_spci['PINAW']:.4f}")
+    print(f"         Winkler: {metrics_spci['Winkler']:.2f}")
+    print(f"         Coverage gap: {metrics_spci['coverage_gap']:+.2f}%")
 
     # Point forecast metrics
     y_pred = model.predict(X_test)
@@ -168,7 +199,7 @@ def generate_comparison_table(all_results):
     """Generate a comparison table across all models and CP methods."""
     rows = []
     for model_name, model_results in all_results.items():
-        for method in ["split_conformal", "adaptive_conformal", "cqr"]:
+        for method in ["split_conformal", "adaptive_conformal", "cqr", "enbpi", "spci"]:
             if method in model_results:
                 m = model_results[method]
                 rows.append({
@@ -192,7 +223,7 @@ def generate_regime_table(all_results):
     """Generate regime-stratified comparison."""
     rows = []
     for model_name, model_results in all_results.items():
-        for method in ["split_conformal", "adaptive_conformal", "cqr"]:
+        for method in ["split_conformal", "adaptive_conformal", "cqr", "enbpi", "spci"]:
             if method in model_results:
                 m = model_results[method]
                 rows.append({

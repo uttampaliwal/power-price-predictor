@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "power-price-predictor"
-version = "2.0.0"
+version = "2.1.0"
 description = "Conformal prediction for Indian electricity price forecasting (IEX DAM) at 15-minute granularity"
 readme = "README.md"
 license = {text = "MIT"}

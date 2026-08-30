@@ -1,7 +1,7 @@
 """
 probabilistic.py — Conformal Prediction for Electricity Price Forecasting
 
-Implements three conformal prediction methods with comprehensive evaluation:
+Implements five conformal prediction methods with comprehensive evaluation:
 
 1. Split Conformal Prediction (SCP):
    - Calibrate on held-out set, apply fixed margin to all test points
@@ -10,13 +10,21 @@ Implements three conformal prediction methods with comprehensive evaluation:
 2. Adaptive Conformal Prediction (ACP):
    - Exponentially weighted scores from calibration set
    - Adapts to distributional shift (non-stationarity, regime changes)
-   - Addresses the key challenge: electricity prices exhibit heavy tails
-     and regime shifts (monsoon, coal crises, demand surges)
 
 3. Conformalized Quantile Regression (CQR):
    - Train quantile models for lower/upper bounds
    - Calibrate with conformal scores on held-out set
    - Produces adaptive-width intervals that widen during volatile periods
+
+4. Ensemble Batch Prediction Intervals (EnbPI) - Xu & Xie (2021):
+   - Bootstrap aggregation with out-of-bag residual calibration
+   - No separate calibration set required
+   - Uses averaged residuals across B bootstrap models
+
+5. Sequential Predictive Conformal Inference (SPCI) - Xu & Xie (2023):
+   - Online/adaptive conformal prediction
+   - Exponentially weighted past residuals with decay
+   - Adapts to distributional shift in streaming data
 
 Evaluation Metrics:
    - PICP: Prediction Interval Coverage Probability (target: 1 - alpha)
@@ -29,12 +37,16 @@ Reference:
     Romano et al. (2019) "Conformalized Quantile Regression"
     Lei et al. (2018) "Distribution-Free Predictive Inference for Regression"
     Gibbs & Candes (2021) "Adaptive Conformal Inference Under Distribution Shift"
+    Xu & Xie (2021) "Ensemble Batch Prediction Intervals"
+    Xu & Xie (2023) "Sequential Predictive Conformal Inference"
 
 Usage:
     from probabilistic import (
         SplitConformal,
         AdaptiveConformal,
         ConformalizedQuantileRegression,
+        EnsembleBatchConformal,
+        SequentialPredictiveConformal,
         evaluate_conformal,
     )
 """
@@ -468,11 +480,245 @@ def compute_naive_prediction_interval(
         lower[i] = y_pred[i] - n_std * std
         upper[i] = y_pred[i] + n_std * std
 
-    return pd.DataFrame({
-        "y_pred": y_pred,
-        "lower": lower,
-        "upper": upper,
-    })
+        return pd.DataFrame({
+            "y_pred": y_pred,
+            "lower": lower,
+            "upper": upper,
+        })
+
+
+class EnsembleBatchConformal:
+    """
+    Ensemble Batch Prediction Intervals (EnbPI) — Xu & Xie (2021).
+
+    Uses bootstrap aggregation to create ensemble predictions, then calibrates
+    using out-of-bag residuals. Key advantage: no separate calibration set required.
+
+    Algorithm:
+        1. Train B bootstrap models on overlapping subsets of training data
+        2. For each bootstrap model, compute out-of-bag (OOB) residuals
+        3. Average the OOB residuals across bootstrap models
+        4. Use the (1-alpha) quantile of averaged residuals as the conformal margin
+        5. Construct intervals: f(x) +/- q_hat
+
+    Properties:
+        - No separate calibration set needed (uses OOB residuals)
+        - Ensemble averaging reduces variance of conformal scores
+        - Better coverage than SCP when base model has high variance
+        - Computationally more expensive (B bootstrap models)
+
+    Reference:
+        Xu, C. and Xie, Y. (2021). "Ensemble Batch Prediction Intervals."
+    """
+
+    def __init__(self, alpha: float = 0.10, n_bootstraps: int = 50, sample_ratio: float = 0.8):
+        """
+        Args:
+            alpha: miscoverage rate
+            n_bootstraps: number of bootstrap models
+            sample_ratio: fraction of training data per bootstrap
+        """
+        self.alpha = alpha
+        self.n_bootstraps = n_bootstraps
+        self.sample_ratio = sample_ratio
+        self.bootstrap_models = []
+        self.q_hat = None
+
+    def fit(self, model_factory, X_train: np.ndarray, y_train: np.ndarray):
+        """
+        Train bootstrap ensemble and compute OOB residuals.
+
+        Args:
+            model_factory: callable that returns a new model instance
+            X_train: training features
+            y_train: training targets
+        """
+        import numpy as np
+
+        n = len(X_train)
+        n_samples = int(n * self.sample_ratio)
+        rng = np.random.RandomState(42)
+
+        # Store OOB residuals for each bootstrap
+        oob_residuals = [[] for _ in range(n)]
+
+        self.bootstrap_models = []
+        for b in range(self.n_bootstraps):
+            # Bootstrap sample
+            indices = rng.choice(n, size=n_samples, replace=True)
+            oob_mask = np.ones(n, dtype=bool)
+            oob_mask[indices] = False
+
+            if oob_mask.sum() == 0:
+                continue
+
+            # Train model on bootstrap sample
+            model = model_factory()
+            model.fit(X_train[indices], y_train[indices])
+            self.bootstrap_models.append(model)
+
+            # Compute OOB residuals
+            oob_pred = model.predict(X_train[oob_mask])
+            oob_resid = np.abs(y_train[oob_mask] - oob_pred)
+
+            # Store residuals for OOB indices
+            oob_indices = np.where(oob_mask)[0]
+            for idx, resid in zip(oob_indices, oob_resid):
+                oob_residuals[idx].append(resid)
+
+        # Average residuals across bootstraps for each point
+        avg_residuals = []
+        for resid_list in oob_residuals:
+            if len(resid_list) > 0:
+                avg_residuals.append(np.mean(resid_list))
+            else:
+                # If no bootstrap had this point as OOB, use median of all residuals
+                all_resids = [r for sublist in oob_residuals for r in sublist]
+                avg_residuals.append(np.median(all_resids))
+
+        # Compute conformal quantile from averaged OOB residuals
+        avg_residuals = np.array(avg_residuals)
+        n_cal = len(avg_residuals)
+        q_level = np.ceil((n_cal + 1) * (1 - self.alpha)) / n_cal
+        self.q_hat = np.quantile(avg_residuals, np.minimum(q_level, 1.0))
+
+        return self
+
+    def predict(self, X: np.ndarray) -> pd.DataFrame:
+        """Generate EnbPI prediction intervals."""
+        if self.q_hat is None:
+            raise ValueError("Must call fit() first")
+
+        # Ensemble prediction: average across bootstrap models
+        preds = np.array([m.predict(X) for m in self.bootstrap_models])
+        y_pred = np.mean(preds, axis=0)
+
+        lower = y_pred - self.q_hat
+        upper = y_pred + self.q_hat
+
+        return pd.DataFrame({
+            "y_pred": y_pred,
+            "lower": lower,
+            "upper": upper,
+        })
+
+
+class SequentialPredictiveConformal:
+    """
+    Sequential Predictive Conformal Inference (SPCI) — Xu & Xie (2023).
+
+    Online/adaptive conformal prediction that updates calibration scores
+    sequentially as new observations arrive. Uses exponential weighting
+    to emphasize recent scores.
+
+    Algorithm:
+        1. Initialize with a calibration set of residuals
+        2. For each test point x_t:
+           - Compute |y_t - f(x_t)| if y_t available (online mode)
+           - Add to calibration set
+           - Apply exponential decay weights to past scores
+           - Compute (1-alpha) quantile of weighted scores
+           - Construct interval: f(x_{t+1}) +/- q_hat_t
+
+    Properties:
+        - Truly online: updates calibration after each prediction
+        - Adapts to distributional shift automatically
+        - Exponential decay focuses on recent behavior
+        - Bounded regret: converges to oracle under stationarity
+
+    Reference:
+        Xu, C. and Xie, Y. (2023). "Sequential Predictive Conformal Inference."
+    """
+
+    def __init__(self, alpha: float = 0.10, decay: float = 0.99, min_scores: int = 100):
+        """
+        Args:
+            alpha: miscoverage rate
+            decay: exponential decay factor (0.99 = slow decay, 0.9 = fast decay)
+            min_scores: minimum number of scores before producing intervals
+        """
+        self.alpha = alpha
+        self.decay = decay
+        self.min_scores = min_scores
+        self.cal_scores = []
+        self.weights = []
+
+    def fit(self, model, X_cal: np.ndarray, y_cal: np.ndarray):
+        """Initialize calibration set from held-out data."""
+        y_cal_pred = model.predict(X_cal)
+        scores = np.abs(y_cal - y_cal_pred)
+        self.cal_scores = list(scores)
+        self.weights = [1.0] * len(scores)
+        return self
+
+    def predict(self, model, X: np.ndarray) -> pd.DataFrame:
+        """
+        Generate SPCI prediction intervals using current calibration state.
+
+        In batch mode (no true labels), uses the current calibration state.
+        For online mode, call update() after observing each true label.
+        """
+        if len(self.cal_scores) < self.min_scores:
+            raise ValueError(f"Need at least {self.min_scores} calibration scores")
+
+        y_pred = model.predict(X)
+
+        # Compute weighted quantile
+        scores_arr = np.array(self.cal_scores)
+        weights_arr = np.array(self.weights)
+
+        # Normalize weights
+        weights_arr = weights_arr / weights_arr.sum()
+
+        # Compute weighted quantile using interpolation
+        sorted_indices = np.argsort(scores_arr)
+        sorted_scores = scores_arr[sorted_indices]
+        sorted_weights = weights_arr[sorted_indices]
+        cumsum = np.cumsum(sorted_weights)
+
+        # Find quantile point
+        q_level = 1 - self.alpha
+        q_idx = np.searchsorted(cumsum, q_level)
+        q_idx = min(q_idx, len(sorted_scores) - 1)
+
+        # Interpolate for smoother quantile
+        if q_idx > 0 and cumsum[q_idx - 1] < q_level:
+            frac = (q_level - cumsum[q_idx - 1]) / (cumsum[q_idx] - cumsum[q_idx - 1] + 1e-10)
+            q_hat = sorted_scores[q_idx - 1] + frac * (sorted_scores[q_idx] - sorted_scores[q_idx - 1])
+        else:
+            q_hat = sorted_scores[q_idx]
+
+        lower = y_pred - q_hat
+        upper = y_pred + q_hat
+
+        return pd.DataFrame({
+            "y_pred": y_pred,
+            "lower": lower,
+            "upper": upper,
+        })
+
+    def update(self, y_true: float, y_pred: float):
+        """
+        Update calibration with new observation (online mode).
+
+        Call this after observing the true label for a test point.
+        """
+        score = np.abs(y_true - y_pred)
+        self.cal_scores.append(score)
+
+        # Apply exponential decay: recent scores get higher weight
+        # Weight = decay^(age), where age = 0 for most recent
+        new_weight = self.decay ** 0  # most recent
+        self.weights.append(new_weight)
+
+        # Decay all existing weights
+        self.weights = [w * self.decay for w in self.weights[:-1]] + [new_weight]
+
+        # Keep only last N scores to prevent memory growth
+        max_scores = 5000
+        if len(self.cal_scores) > max_scores:
+            self.cal_scores = self.cal_scores[-max_scores:]
+            self.weights = self.weights[-max_scores:]
 
 
 def compute_interval_metrics(y_true: np.ndarray, intervals: pd.DataFrame) -> dict:

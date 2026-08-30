@@ -1,0 +1,5 @@
+strategy,total_pnl_rs,total_pnl_millions,sharpe_ratio,win_rate_pct,max_drawdown_rs,profit_factor,n_trading_days
+Interval Arbitrage,3519196402.07,3519.2,19.28,97.66,0.0,inf,598
+Confidence-Weighted,2179860310.0,2179.86,14.1,80.27,14181915.0,11.86,598
+Unhedged,-6416322064.93,-6416.32,-34.67,0.0,6402397969.36,0.0,598
+Hedged with SCP,-6416322064.93,-6416.32,-34.67,0.0,6402397969.36,0.0,598
