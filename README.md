@@ -17,7 +17,7 @@ Production-grade uncertainty quantification for day-ahead electricity prices on 
 ┌──────────────────────────────────────────────────────────────┐
 │                    DATA PIPELINE                             │
 ├──────────────────────────────────────────────────────────────┤
-│  IEX DAM (Playwright)  ──┐                                  │
+│  IEX DAM (urllib scrape)──┐                                  │
 │  Open-Meteo Weather    ──┼──▶ Feature Engineering (18 feats)│
 │  Calendar/Holidays     ──┘         │                         │
 │                                    ▼                         │
@@ -96,6 +96,10 @@ python src/hourly_coverage.py
 # Start API server
 uvicorn src.api_v2:app --port 8000
 
+# Run the operator dashboard
+pip install streamlit
+streamlit run app.py
+
 # Docker
 docker build -t power-price-predictor .
 docker run -p 8000:8000 power-price-predictor
@@ -104,24 +108,35 @@ docker run -p 8000:8000 power-price-predictor
 ## Project Structure
 
 ```
-src/
-├── config.py                 # Constants, paths, feature lists
-├── fetch_data.py             # IEX DAM scraper (Playwright)
-├── fetch_weather.py          # Open-Meteo API client
-├── preprocess.py             # Feature engineering (18 features)
-├── probabilistic.py          # SCP, ACP, CQR, EnbPI, SPCI
-├── run_conformal.py          # Full evaluation pipeline
-├── trading_simulation.py     # Interval-based trading strategies
-├── hourly_coverage.py        # Hourly/monthly coverage analysis
-├── tracking_cp.py            # MLflow experiment tracking
-├── api_v2.py                 # FastAPI serving endpoint
-├── backtest.py               # Trading strategy backtesting
-├── evaluate.py               # Regression/classification metrics
-└── models/
-    ├── xgboost_model.py
-    ├── lightgbm_model.py
-    ├── ridge_model.py
-    └── lstm_model.py
+power-price-predictor/
+├── app.py                    # Streamlit dashboard (Live Tracker / Sandbox / Scorecard / Data Mgmt)
+├── src/
+│   ├── config.py             # Constants, paths, feature lists, HOLDOUT_START_DATE
+│   ├── fetch_data.py         # IEX DAM scraper (urllib + read_html)
+│   ├── fetch_weather.py      # Open-Meteo API client
+│   ├── preprocess.py         # Feature engineering (18 features)
+│   ├── probabilistic.py      # SCP, ACP, CQR, EnbPI, SPCI
+│   ├── run_conformal.py      # Conformal sweep → results/conformal/
+│   ├── hourly_coverage.py    # Hourly coverage analysis
+│   ├── trading_simulation.py # Interval-trading strategies (paper numbers)
+│   ├── backtest.py           # Block-shift strategy (alternative narrative)
+│   ├── benchmark.py          # Model comparison + drift figures
+│   ├── tracking_cp.py        # MLflow experiment tracking (runs not committed)
+│   ├── powerbi_exporter.py   # Power BI export (→ powerbi_data/)
+│   ├── api.py                # FastAPI v1 (legacy, not deployed)
+│   ├── api_v2.py             # FastAPI v2 serving (conformal intervals; Dockerized)
+│   └── models/
+│       ├── naive_model.py / ridge / random_forest / xgboost / lightgbm
+│       ├── *_no_weather.py   # ablation twins → models_no_weather/
+│       └── (experimental: lstm / prophet / tft — no trained artifacts)
+├── data/                     # raw yearly CSVs + processed parquet (committed snapshot)
+├── models/  models_no_weather/ # trained artifacts + metrics CSVs (committed)
+├── predictions/              # holdout predictions, benchmark CSVs, backtest/
+├── results/conformal/        # interval sweep snapshots (committed yardsticks)
+├── paper/                    # LaTeX paper + figures/ + submission materials
+├── blog/                     # research write-ups
+├── docs/                     # POWERBI guides, learning summary
+└── tests/                    # pytest suite (25 tests)
 ```
 
 ## Data
@@ -135,12 +150,15 @@ src/
 
 ## Experiments
 
-MLflow tracks all 15 method-model combinations:
+MLflow experiment tracking is available (runs write to `mlruns/`, not committed):
 
 ```bash
+pip install mlflow
 python src/tracking_cp.py
 mlflow ui  # View at http://localhost:5000
 ```
+
+Committed metric snapshots (`predictions/`, `results/conformal/`) are the registry of record — see ROADMAP.md for the planned manifest-based registry.
 
 ## Tests
 

@@ -1,3 +1,7 @@
+# NOTE: this file is a human-readable MIRROR of pyproject.toml (same pinned
+# ranges). The Docker image installs from pyproject.toml (`pip install -e .`),
+# not from this file — keep both in sync when editing either.
+
 # Core ML
 numpy>=1.24.0
 pandas>=2.0.0
@@ -7,27 +11,22 @@ lightgbm>=4.0.0
 joblib>=1.3.0
 pyarrow>=12.0.0
 
-# Deep Learning (optional, for LSTM)
-torch>=2.0.0
+# Serving + dashboard (first-class in pyproject)
+fastapi>=0.100.0
+uvicorn>=0.22.0
+plotly>=5.15.0
+streamlit>=1.30.0
 
-# Weather & Holidays
+# Experiment tracking (runs are not committed)
+mlflow>=2.8.0
+
+# Data ingestion & weather
 urllib3>=2.0.0
 holidays>=0.30
 
 # Visualization
 matplotlib>=3.7.0
 seaborn>=0.12.0
-plotly>=5.15.0
-
-# API serving
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-
-# Experiment tracking
-mlflow>=2.8.0
-
-# Dashboard
-streamlit>=1.30.0
 
 # Web scraping
 lxml>=4.9.0
@@ -35,3 +34,8 @@ html5lib>=1.1
 
 # Utilities
 tqdm>=4.65.0
+
+# Optional extras (pyproject optional-dependencies):
+#   pip install -e ".[deep-learning]"   -> torch>=2.0.0
+#   pip install -e ".[statistical]"     -> statsmodels>=0.14.0
+#   pip install -e ".[dev]"             -> pytest, pytest-cov

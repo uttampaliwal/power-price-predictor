@@ -94,7 +94,8 @@ mlruns/
 # ==========
 # Streamlit
 # ==========
-.streamlit/
+.streamlit/local
+!.streamlit/config.toml
 
 # ==========
 # Misc
