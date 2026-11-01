@@ -71,9 +71,7 @@ def log_experiment():
                 mlflow.log_metric("std_width", m["std_width"])
                 mlflow.log_metric("p50_rmse", m["P50_RMSE"])
                 mlflow.log_metric("p50_mae", m["P50_MAE"])
-                mlflow.log_metric(
-                    "point_forecast_rmse", model_results["point_forecast_RMSE"]
-                )
+                mlflow.log_metric("point_forecast_rmse", model_results["point_forecast_RMSE"])
 
                 # Log regime metrics
                 for regime in ["normal", "spike"]:
@@ -86,20 +84,14 @@ def log_experiment():
                         mlflow.log_metric(f"{regime}_n", m[n_key])
 
                 # Log artifacts
-                mlflow.log_artifact(
-                    os.path.join(RESULTS_DIR, "conformal_comparison.csv")
-                )
+                mlflow.log_artifact(os.path.join(RESULTS_DIR, "conformal_comparison.csv"))
                 mlflow.log_artifact(os.path.join(RESULTS_DIR, "conformal_regime.csv"))
 
                 if os.path.exists(os.path.join(RESULTS_DIR, "hourly_coverage.csv")):
-                    mlflow.log_artifact(
-                        os.path.join(RESULTS_DIR, "hourly_coverage.csv")
-                    )
+                    mlflow.log_artifact(os.path.join(RESULTS_DIR, "hourly_coverage.csv"))
 
                 if os.path.exists(os.path.join(RESULTS_DIR, "trading_simulation.csv")):
-                    mlflow.log_artifact(
-                        os.path.join(RESULTS_DIR, "trading_simulation.csv")
-                    )
+                    mlflow.log_artifact(os.path.join(RESULTS_DIR, "trading_simulation.csv"))
 
                 print(f"  Logged: {model_name}/{method}")
 

@@ -21,21 +21,13 @@ from config import TARGET_COL as TARGET
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
-MODELS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "models_no_weather", "lightgbm"
-)
-PREDS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "predictions", "lightgbm_no_weather"
-)
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models_no_weather", "lightgbm")
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "lightgbm_no_weather")
 
 
 def load_data():
-    train = pd.read_parquet(
-        os.path.join(DATA_DIR, "training_features_no_weather.parquet")
-    )
-    test = pd.read_parquet(
-        os.path.join(DATA_DIR, "holdout_features_no_weather.parquet")
-    )
+    train = pd.read_parquet(os.path.join(DATA_DIR, "training_features_no_weather.parquet"))
+    test = pd.read_parquet(os.path.join(DATA_DIR, "holdout_features_no_weather.parquet"))
     return train, test
 
 
@@ -89,9 +81,7 @@ def run():
     )
 
     y_val_pred = model.predict(X_val)
-    print_metrics_table(
-        "LightGBM No Weather (Val)", compute_all_metrics(y_val, y_val_pred)
-    )
+    print_metrics_table("LightGBM No Weather (Val)", compute_all_metrics(y_val, y_val_pred))
 
     y_pred = model.predict(X_test)
     metrics = compute_all_metrics(y_test, y_pred)

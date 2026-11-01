@@ -134,9 +134,7 @@ def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
 def merge_weather_data(df: pd.DataFrame, split: str) -> pd.DataFrame:
     weather_path = os.path.join(DATA_RAW_DIR, f"weather_{split}.csv")
     if not os.path.exists(weather_path):
-        print(
-            f"  [WARN] No weather data found at {weather_path}, proceeding without weather features."
-        )
+        print(f"  [WARN] No weather data found at {weather_path}, proceeding without weather features.")
         return df
 
     print("  Merging weather data...")
@@ -145,9 +143,7 @@ def merge_weather_data(df: pd.DataFrame, split: str) -> pd.DataFrame:
     # We have 'date' (timestamp 00:00:00) and 'hour' (Int16 0-23)
     df["merge_key"] = df["date"] + pd.to_timedelta(df["hour"].astype(int), unit="h")
 
-    merged = pd.merge(
-        df, df_weather, left_on="merge_key", right_on="datetime", how="left"
-    )
+    merged = pd.merge(df, df_weather, left_on="merge_key", right_on="datetime", how="left")
     merged = merged.drop(columns=["merge_key", "datetime"])
 
     merged["delhi_apparent_temp"] = merged["delhi_apparent_temp"].ffill().bfill()
@@ -176,14 +172,10 @@ def run(split: str, include_weather: bool = True):
     # COMMENTED OUT: We want to keep the first 7 days in the parquet file so the
     # Dashboard 'Live Tracker' can still display them. The ML models already have
     # their own `df.dropna(subset=FEATURE_COLS)` steps before training.
-    feature_cols = [
-        c for c in df.columns if c.startswith("mcp_lag") or c.startswith("mcp_rolling")
-    ]
+    feature_cols = [c for c in df.columns if c.startswith("mcp_lag") or c.startswith("mcp_rolling")]
     before = len(df)
     # df = df.dropna(subset=feature_cols)
-    print(
-        f"  (Kept {before} rows. Models will drop the first 7 days internally for training.)"
-    )
+    print(f"  (Kept {before} rows. Models will drop the first 7 days internally for training.)")
 
     # Remove weather features if include_weather is False
     if not include_weather:
@@ -206,9 +198,7 @@ def run(split: str, include_weather: bool = True):
     out_path = os.path.join(out_dir, f"{split}_features{suffix}.parquet")
     df.to_parquet(out_path, index=False)
     print(f"\n[OK] Saved → {out_path}")
-    print(
-        f"     Shape: {df.shape}  |  Date range: {df['date'].min().date()} to {df['date'].max().date()}"
-    )
+    print(f"     Shape: {df.shape}  |  Date range: {df['date'].min().date()} to {df['date'].max().date()}")
 
 
 if __name__ == "__main__":

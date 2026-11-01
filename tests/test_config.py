@@ -26,9 +26,7 @@ class TestFeatureCols:
             assert col in FEATURE_COLS
 
     def test_no_weather_length(self):
-        assert len(FEATURE_COLS_NO_WEATHER) == len(FEATURE_COLS) - len(
-            WEATHER_FEATURE_COLS
-        )
+        assert len(FEATURE_COLS_NO_WEATHER) == len(FEATURE_COLS) - len(WEATHER_FEATURE_COLS)
 
 
 class TestConstants:

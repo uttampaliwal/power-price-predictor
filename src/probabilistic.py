@@ -162,16 +162,10 @@ class AdaptiveConformal:
         n = len(y_pred)
 
         # Use the most recent 'window' scores for adaptivity
-        recent_scores = (
-            self.cal_scores[-self.window :]
-            if len(self.cal_scores) > self.window
-            else self.cal_scores
-        )
+        recent_scores = self.cal_scores[-self.window :] if len(self.cal_scores) > self.window else self.cal_scores
 
         # Quantile from recent scores (marginal coverage guarantee)
-        q_level = np.ceil((len(recent_scores) + 1) * (1 - self.alpha)) / len(
-            recent_scores
-        )
+        q_level = np.ceil((len(recent_scores) + 1) * (1 - self.alpha)) / len(recent_scores)
         q_hat = np.quantile(recent_scores, np.minimum(q_level, 1.0))
 
         # Adaptive adjustment: scale by local residual magnitude
@@ -232,9 +226,7 @@ class ConformalizedQuantileRegression:
         - Calibration margin q_hat is fixed (same for all test points)
     """
 
-    def __init__(
-        self, alpha: float = 0.10, q_lower: float = 0.05, q_upper: float = 0.95
-    ):
+    def __init__(self, alpha: float = 0.10, q_lower: float = 0.05, q_upper: float = 0.95):
         """
         Args:
             alpha: target miscoverage rate
@@ -417,16 +409,12 @@ def evaluate_conformal(
 
     # PINAW: Prediction Interval Normalized Average Width
     width = upper - lower
-    pinaw = (
-        np.mean(width) / np.mean(np.abs(y_true)) if np.mean(np.abs(y_true)) > 0 else 0
-    )
+    pinaw = np.mean(width) / np.mean(np.abs(y_true)) if np.mean(np.abs(y_true)) > 0 else 0
 
     # Winkler Score (lower is better)
     # For covered points: width
     # For uncovered points: width + (2/alpha) * distance outside
-    winkler = np.where(
-        covered, width, width + (2 / alpha) * np.maximum(lower - y_true, y_true - upper)
-    )
+    winkler = np.where(covered, width, width + (2 / alpha) * np.maximum(lower - y_true, y_true - upper))
     winkler_mean = np.mean(winkler)
 
     # ACI: Average Coverage Interval quality
@@ -536,9 +524,7 @@ class EnsembleBatchConformal:
         Xu, C. and Xie, Y. (2021). "Ensemble Batch Prediction Intervals."
     """
 
-    def __init__(
-        self, alpha: float = 0.10, n_bootstraps: int = 50, sample_ratio: float = 0.8
-    ):
+    def __init__(self, alpha: float = 0.10, n_bootstraps: int = 50, sample_ratio: float = 0.8):
         """
         Args:
             alpha: miscoverage rate
@@ -712,12 +698,8 @@ class SequentialPredictiveConformal:
 
         # Interpolate for smoother quantile
         if q_idx > 0 and cumsum[q_idx - 1] < q_level:
-            frac = (q_level - cumsum[q_idx - 1]) / (
-                cumsum[q_idx] - cumsum[q_idx - 1] + 1e-10
-            )
-            q_hat = sorted_scores[q_idx - 1] + frac * (
-                sorted_scores[q_idx] - sorted_scores[q_idx - 1]
-            )
+            frac = (q_level - cumsum[q_idx - 1]) / (cumsum[q_idx] - cumsum[q_idx - 1] + 1e-10)
+            q_hat = sorted_scores[q_idx - 1] + frac * (sorted_scores[q_idx] - sorted_scores[q_idx - 1])
         else:
             q_hat = sorted_scores[q_idx]
 
@@ -769,21 +751,9 @@ def compute_interval_metrics(y_true: np.ndarray, intervals: pd.DataFrame) -> dic
     mask = ~np.isnan(y_true)
     y_true = y_true[mask]
 
-    p10 = (
-        intervals["P10"].values[mask]
-        if "P10" in intervals
-        else intervals["lower"].values[mask]
-    )
-    p50 = (
-        intervals["P50"].values[mask]
-        if "P50" in intervals
-        else intervals["y_pred"].values[mask]
-    )
-    p90 = (
-        intervals["P90"].values[mask]
-        if "P90" in intervals
-        else intervals["upper"].values[mask]
-    )
+    p10 = intervals["P10"].values[mask] if "P10" in intervals else intervals["lower"].values[mask]
+    p50 = intervals["P50"].values[mask] if "P50" in intervals else intervals["y_pred"].values[mask]
+    p90 = intervals["P90"].values[mask] if "P90" in intervals else intervals["upper"].values[mask]
 
     from sklearn.metrics import mean_absolute_error, mean_squared_error
 

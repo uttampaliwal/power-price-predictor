@@ -46,9 +46,7 @@ def export_model_metrics():
                 df = pd.read_csv(metrics_path)
                 df["weather"] = weather_flag
                 df["model_id"] = f"{model_name}_{weather_flag}"
-                df["Model Category"] = (
-                    "With Weather" if weather_flag == "Yes" else "Without Weather"
-                )
+                df["Model Category"] = "With Weather" if weather_flag == "Yes" else "Without Weather"
                 # Rename for readability in Power BI
                 df = df.rename(
                     columns={
@@ -106,9 +104,7 @@ def export_predictions():
 
     # Without weather predictions
     for model_name in ["xgboost", "lightgbm", "random_forest", "ridge"]:
-        pred_path = os.path.join(
-            PREDS_DIR, f"{model_name}_no_weather", "test_predictions.csv"
-        )
+        pred_path = os.path.join(PREDS_DIR, f"{model_name}_no_weather", "test_predictions.csv")
         if os.path.exists(pred_path):
             df = pd.read_csv(pred_path, parse_dates=["date"])
             df["model"] = model_name
@@ -190,9 +186,7 @@ def export_feature_importance():
     if all_fi:
         df = pd.concat(all_fi, ignore_index=True)
         df["model_id"] = df["model"] + "_" + df["weather"]
-        df["Model Category"] = df["weather"].apply(
-            lambda x: "With Weather" if x == "Yes" else "Without Weather"
-        )
+        df["Model Category"] = df["weather"].apply(lambda x: "With Weather" if x == "Yes" else "Without Weather")
         df.to_csv(os.path.join(OUTPUT_DIR, "feature_importance.csv"), index=False)
         print(f"   ✅ feature_importance.csv ({len(df)} records)")
     else:
@@ -206,12 +200,8 @@ def export_benchmark_metrics():
     benchmark_path = os.path.join(PREDS_DIR, "benchmark_metrics.csv")
     if os.path.exists(benchmark_path):
         df = pd.read_csv(benchmark_path)
-        df["model_id"] = df.apply(
-            lambda x: f"{x['model'].replace('_no_weather', '')}_{x['weather']}", axis=1
-        )
-        df["Model Category"] = df["weather"].apply(
-            lambda x: "With Weather" if x == "Yes" else "Without Weather"
-        )
+        df["model_id"] = df.apply(lambda x: f"{x['model'].replace('_no_weather', '')}_{x['weather']}", axis=1)
+        df["Model Category"] = df["weather"].apply(lambda x: "With Weather" if x == "Yes" else "Without Weather")
         # Rename for readability
         df = df.rename(
             columns={
@@ -233,12 +223,8 @@ def export_monthly_drift():
     drift_path = os.path.join(PREDS_DIR, "drift_by_month.csv")
     if os.path.exists(drift_path):
         df = pd.read_csv(drift_path)
-        df["model_id"] = df.apply(
-            lambda x: f"{x['model'].replace('_no_weather', '')}_{x['weather']}", axis=1
-        )
-        df["Model Category"] = df["weather"].apply(
-            lambda x: "With Weather" if x == "Yes" else "Without Weather"
-        )
+        df["model_id"] = df.apply(lambda x: f"{x['model'].replace('_no_weather', '')}_{x['weather']}", axis=1)
+        df["Model Category"] = df["weather"].apply(lambda x: "With Weather" if x == "Yes" else "Without Weather")
         df = df.rename(columns={"RMSE": "RMSE (Lower is Better)", "R2": "R2 Score"})
         df.to_csv(os.path.join(OUTPUT_DIR, "monthly_drift.csv"), index=False)
         print(f"   ✅ monthly_drift.csv ({len(df)} records)")
@@ -257,9 +243,7 @@ def export_weather_impact_comparison():
         without_path = os.path.join(MODELS_NO_WEATHER_DIR, model, "metrics.csv")
 
         with_weather = pd.read_csv(with_path) if os.path.exists(with_path) else None
-        without_weather = (
-            pd.read_csv(without_path) if os.path.exists(without_path) else None
-        )
+        without_weather = pd.read_csv(without_path) if os.path.exists(without_path) else None
 
         if with_weather is not None and without_weather is not None:
             w_r2 = with_weather["R2"].iloc[0]
@@ -273,23 +257,17 @@ def export_weather_impact_comparison():
                     "r2_with_weather": w_r2,
                     "r2_without_weather": wo_r2,
                     "r2_difference": w_r2 - wo_r2,
-                    "r2_improvement_pct": ((w_r2 - wo_r2) / wo_r2) * 100
-                    if wo_r2 != 0
-                    else 0,
+                    "r2_improvement_pct": ((w_r2 - wo_r2) / wo_r2) * 100 if wo_r2 != 0 else 0,
                     "wape_with_weather": w_wape,
                     "wape_without_weather": wo_wape,
                     "wape_difference": w_wape - wo_wape,
-                    "wape_improvement_pct": ((wo_wape - w_wape) / wo_wape) * 100
-                    if wo_wape != 0
-                    else 0,
+                    "wape_improvement_pct": ((wo_wape - w_wape) / wo_wape) * 100 if wo_wape != 0 else 0,
                 }
             )
 
     if rows:
         df = pd.DataFrame(rows)
-        df.to_csv(
-            os.path.join(OUTPUT_DIR, "weather_impact_comparison.csv"), index=False
-        )
+        df.to_csv(os.path.join(OUTPUT_DIR, "weather_impact_comparison.csv"), index=False)
         print(f"   ✅ weather_impact_comparison.csv ({len(df)} records)")
     else:
         print("   ⚠️ Need both weather and no-weather models trained")

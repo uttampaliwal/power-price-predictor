@@ -93,9 +93,7 @@ async def load_models():
     print("Loading models and calibration data...")
 
     # Load training data for calibration
-    train = pd.read_parquet(
-        os.path.join(DATA_PROCESSED_DIR, "training_features.parquet")
-    )
+    train = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "training_features.parquet"))
     train = train.dropna(subset=FEATURE_COLS + [TARGET_COL])
 
     # Split into train and calibration
@@ -164,9 +162,7 @@ async def health():
 async def predict(request: PredictionRequest):
     """Generate point forecast with conformal prediction interval."""
     if request.model_name not in _models:
-        raise HTTPException(
-            status_code=400, detail=f"Model '{request.model_name}' not found"
-        )
+        raise HTTPException(status_code=400, detail=f"Model '{request.model_name}' not found")
 
     model = _models[request.model_name]
     features = np.array(request.features).reshape(1, -1)

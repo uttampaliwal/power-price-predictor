@@ -210,12 +210,8 @@ def get_features_for_date(target_date: date, history_df: pd.DataFrame) -> pd.Dat
                 "mcp_rolling_7d_std": rolling_7d_std,
                 "mcp_rolling_30d_mean": rolling_30d_mean,
                 "mcp_rolling_30d_std": rolling_30d_std,
-                "delhi_apparent_temp": delhi_weather[hour]
-                if hour < len(delhi_weather)
-                else np.nan,
-                "mumbai_apparent_temp": mumbai_weather[hour]
-                if hour < len(mumbai_weather)
-                else np.nan,
+                "delhi_apparent_temp": delhi_weather[hour] if hour < len(delhi_weather) else np.nan,
+                "mumbai_apparent_temp": mumbai_weather[hour] if hour < len(mumbai_weather) else np.nan,
             }
         )
 
@@ -231,9 +227,7 @@ def make_plot(
 ):
     hours = blocks / 4
     fig, ax = plt.subplots(figsize=(14, 5))
-    ax.plot(
-        hours, prices, color="#2563EB", linewidth=1.8, label=f"{model_name} prediction"
-    )
+    ax.plot(hours, prices, color="#2563EB", linewidth=1.8, label=f"{model_name} prediction")
     ax.fill_between(hours, prices * 0.9, prices * 1.1, alpha=0.12, color="#2563EB")
     ax.set_title(f"Predicted DAM MCP — {target_date}  [{model_name}]", fontsize=14)
     ax.set_xlabel("Hour of Day")
@@ -265,15 +259,9 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
     dfs = []
     for p in [train_path, holdout_path]:
         if os.path.exists(p):
-            dfs.append(
-                pd.read_parquet(
-                    p, columns=["date", "block", "time_block", "mcp_rs_per_mwh"]
-                )
-            )
+            dfs.append(pd.read_parquet(p, columns=["date", "block", "time_block", "mcp_rs_per_mwh"]))
     if not dfs:
-        raise FileNotFoundError(
-            f"No processed data found at {train_path}. Run preprocess.py first."
-        )
+        raise FileNotFoundError(f"No processed data found at {train_path}. Run preprocess.py first.")
     history = pd.concat(dfs).sort_values("date")
     history["date"] = pd.to_datetime(history["date"])
 
@@ -285,16 +273,11 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
             raise ValueError(f"No history found for lag date {lag7_date}")
         y_pred = lag_rows["mcp_rs_per_mwh"].values
         blocks = lag_rows["block"].values
-        time_blocks = (
-            lag_rows["time_block"].values
-            if "time_block" in lag_rows
-            else [f"block_{b}" for b in blocks]
-        )
+        time_blocks = lag_rows["time_block"].values if "time_block" in lag_rows else [f"block_{b}" for b in blocks]
 
     elif mode == "lstm":
         raise NotImplementedError(
-            "LSTM predict not yet implemented in predict.py. "
-            "Use lstm_model.py to evaluate on holdout instead."
+            "LSTM predict not yet implemented in predict.py. Use lstm_model.py to evaluate on holdout instead."
         )
     else:
         feat_df = get_features_for_date(target_date, history)
@@ -321,9 +304,7 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
         )
         if has_weather:
             out_df["delhi_weather"] = np.round(feat_df["delhi_apparent_temp"].values, 2)
-            out_df["mumbai_weather"] = np.round(
-                feat_df["mumbai_apparent_temp"].values, 2
-            )
+            out_df["mumbai_weather"] = np.round(feat_df["mumbai_apparent_temp"].values, 2)
     else:
         out_df = pd.DataFrame(
             {
@@ -346,9 +327,7 @@ def run(model_name: str, target_date: date, save_files: bool = True) -> pd.DataF
         csv_path = os.path.join(out_dir, f"prediction_{target_date}.csv")
         out_df.to_csv(csv_path, index=False)
         print(f"  [OK] Predictions → {csv_path}")
-        print(
-            f"       Min: {y_pred.min():.1f}  Max: {y_pred.max():.1f}  Mean: {y_pred.mean():.1f} Rs/MWh"
-        )
+        print(f"       Min: {y_pred.min():.1f}  Max: {y_pred.max():.1f}  Mean: {y_pred.mean():.1f} Rs/MWh")
 
         png_path = os.path.join(out_dir, f"plot_{target_date}.png")
         make_plot(blocks, y_pred, model_name, target_date, png_path)

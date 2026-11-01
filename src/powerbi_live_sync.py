@@ -96,21 +96,15 @@ def quick_export():
     changed1, _ = check_and_update("raw_dam", DATA_RAW_DIR, "dam_*.csv", force=True)
 
     # Check processed data
-    changed2, _ = check_and_update(
-        "processed", DATA_PROCESSED_DIR, "*.parquet", force=True
-    )
+    changed2, _ = check_and_update("processed", DATA_PROCESSED_DIR, "*.parquet", force=True)
 
     # Check predictions
-    changed3, _ = check_and_update(
-        "predictions", PREDS_DIR, "test_predictions.csv", force=True
-    )
+    changed3, _ = check_and_update("predictions", PREDS_DIR, "test_predictions.csv", force=True)
 
     # If anything changed, do full export
     if changed1 or changed2 or changed3:
         print("   → Changes detected, running full export...")
-        os.system(
-            f'"{sys.executable}" "{os.path.join(os.path.dirname(__file__), "powerbi_exporter.py")}"'
-        )
+        os.system(f'"{sys.executable}" "{os.path.join(os.path.dirname(__file__), "powerbi_exporter.py")}"')
     else:
         print("   ✓ No new data to sync")
 

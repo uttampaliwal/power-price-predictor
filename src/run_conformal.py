@@ -37,12 +37,8 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "conforma
 
 def load_data():
     """Load training and holdout data, split into train/cal/test."""
-    train = pd.read_parquet(
-        os.path.join(DATA_PROCESSED_DIR, "training_features.parquet")
-    )
-    holdout = pd.read_parquet(
-        os.path.join(DATA_PROCESSED_DIR, "holdout_features.parquet")
-    )
+    train = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "training_features.parquet"))
+    holdout = pd.read_parquet(os.path.join(DATA_PROCESSED_DIR, "holdout_features.parquet"))
 
     # Drop rows with NaN
     train = train.dropna(subset=FEATURE_COLS + [TARGET_COL])
@@ -117,9 +113,7 @@ def compute_spike_regime(y_true, threshold_percentile=85):
     return np.where(y_true >= threshold, "spike", "normal")
 
 
-def run_conformal_for_model(
-    model_name, model, X_train, y_train, X_cal, y_cal, X_test, y_test, holdout
-):
+def run_conformal_for_model(model_name, model, X_train, y_train, X_cal, y_cal, X_test, y_test, holdout):
     """Run all five CP methods on a single model."""
     print(f"\n{'=' * 60}")
     print(f"  Conformal Prediction: {model_name.upper()}")
@@ -133,9 +127,7 @@ def run_conformal_for_model(
     scp = SplitConformal(alpha=0.10)
     scp.fit(model, X_cal, y_cal)
     intervals_scp = scp.predict(model, X_test)
-    metrics_scp = evaluate_conformal(
-        y_test, intervals_scp, alpha=0.10, regime_labels=regimes
-    )
+    metrics_scp = evaluate_conformal(y_test, intervals_scp, alpha=0.10, regime_labels=regimes)
     results["split_conformal"] = metrics_scp
     print(f"         PICP: {metrics_scp['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_scp['PINAW']:.4f}")
@@ -147,9 +139,7 @@ def run_conformal_for_model(
     acp = AdaptiveConformal(alpha=0.10, gamma=0.005, window=500)
     acp.fit(model, X_cal, y_cal)
     intervals_acp = acp.predict(model, X_test)
-    metrics_acp = evaluate_conformal(
-        y_test, intervals_acp, alpha=0.10, regime_labels=regimes
-    )
+    metrics_acp = evaluate_conformal(y_test, intervals_acp, alpha=0.10, regime_labels=regimes)
     results["adaptive_conformal"] = metrics_acp
     print(f"         PICP: {metrics_acp['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_acp['PINAW']:.4f}")
@@ -161,9 +151,7 @@ def run_conformal_for_model(
     cqr = ConformalizedQuantileRegression(alpha=0.10, q_lower=0.05, q_upper=0.95)
     cqr.fit_quantiles(X_train, y_train, X_cal, y_cal)
     intervals_cqr = cqr.predict(X_test)
-    metrics_cqr = evaluate_conformal(
-        y_test, intervals_cqr, alpha=0.10, regime_labels=regimes
-    )
+    metrics_cqr = evaluate_conformal(y_test, intervals_cqr, alpha=0.10, regime_labels=regimes)
     results["cqr"] = metrics_cqr
     print(f"         PICP: {metrics_cqr['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_cqr['PINAW']:.4f}")
@@ -179,9 +167,7 @@ def run_conformal_for_model(
     enbpi = EnsembleBatchConformal(alpha=0.10, n_bootstraps=10, sample_ratio=0.8)
     enbpi.fit(ridge_factory, X_train, y_train)
     intervals_enbpi = enbpi.predict(X_test)
-    metrics_enbpi = evaluate_conformal(
-        y_test, intervals_enbpi, alpha=0.10, regime_labels=regimes
-    )
+    metrics_enbpi = evaluate_conformal(y_test, intervals_enbpi, alpha=0.10, regime_labels=regimes)
     results["enbpi"] = metrics_enbpi
     print(f"         PICP: {metrics_enbpi['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_enbpi['PINAW']:.4f}")
@@ -193,9 +179,7 @@ def run_conformal_for_model(
     spci = SequentialPredictiveConformal(alpha=0.10, decay=0.99, min_scores=100)
     spci.fit(model, X_cal, y_cal)
     intervals_spci = spci.predict(model, X_test)
-    metrics_spci = evaluate_conformal(
-        y_test, intervals_spci, alpha=0.10, regime_labels=regimes
-    )
+    metrics_spci = evaluate_conformal(y_test, intervals_spci, alpha=0.10, regime_labels=regimes)
     results["spci"] = metrics_spci
     print(f"         PICP: {metrics_spci['PICP']:.2f}%  (target: 90.0%)")
     print(f"         PINAW: {metrics_spci['PINAW']:.4f}")
@@ -313,9 +297,7 @@ def main():
     print(regime_table.to_string(index=False))
 
     # Save results
-    comp_table.to_csv(
-        os.path.join(RESULTS_DIR, "conformal_comparison.csv"), index=False
-    )
+    comp_table.to_csv(os.path.join(RESULTS_DIR, "conformal_comparison.csv"), index=False)
     regime_table.to_csv(os.path.join(RESULTS_DIR, "conformal_regime.csv"), index=False)
 
     # Save full results as JSON
@@ -326,9 +308,7 @@ def main():
     for model_name, intervals in all_intervals.items():
         for method, df in intervals.items():
             df.to_csv(
-                os.path.join(
-                    RESULTS_DIR, f"{model_name.lower()}_{method}_intervals.csv"
-                ),
+                os.path.join(RESULTS_DIR, f"{model_name.lower()}_{method}_intervals.csv"),
                 index=False,
             )
 

@@ -91,9 +91,7 @@ def _load_model(name: str, use_weather: bool = True):
     elif name == "lightgbm":
         import lightgbm as lgb
 
-        path = os.path.join(
-            base, "lightgbm.txt" if use_weather else "lightgbm_no_weather.txt"
-        )
+        path = os.path.join(base, "lightgbm.txt" if use_weather else "lightgbm_no_weather.txt")
         if not os.path.exists(path):
             raise FileNotFoundError(f"LightGBM model not found: {path}")
         model = lgb.LGBMRegressor()
@@ -107,9 +105,7 @@ def _load_model(name: str, use_weather: bool = True):
             raise FileNotFoundError(f"Ridge model not found: {path}")
         model = joblib.load(path)
     elif name == "random_forest":
-        path = os.path.join(
-            base, "random_forest.pkl" if use_weather else "random_forest_no_weather.pkl"
-        )
+        path = os.path.join(base, "random_forest.pkl" if use_weather else "random_forest_no_weather.pkl")
         if not os.path.exists(path):
             raise FileNotFoundError(f"Random Forest model not found: {path}")
         model = joblib.load(path)
@@ -123,9 +119,7 @@ def _load_model(name: str, use_weather: bool = True):
 # ─── Feature Construction ───────────────────────────────────────────────
 def _load_history(split: str = "holdout") -> pd.DataFrame:
     raw_dir = os.path.join(DATA_RAW_DIR, split)
-    csvs = sorted(
-        [f for f in os.listdir(raw_dir) if f.endswith(".csv") and f.startswith("dam_")]
-    )
+    csvs = sorted([f for f in os.listdir(raw_dir) if f.endswith(".csv") and f.startswith("dam_")])
     if not csvs:
         raise FileNotFoundError(f"No DAM CSVs found in {raw_dir}")
     dfs = [pd.read_csv(os.path.join(raw_dir, f), parse_dates=["date"]) for f in csvs]
@@ -143,9 +137,7 @@ def _load_weather(split: str = "holdout") -> pd.DataFrame:
     return pd.read_csv(path, parse_dates=["time"])
 
 
-def _build_features_for_date(
-    target_date: date, history: pd.DataFrame, weather: Optional[pd.DataFrame]
-) -> pd.DataFrame:
+def _build_features_for_date(target_date: date, history: pd.DataFrame, weather: Optional[pd.DataFrame]) -> pd.DataFrame:
     """Build feature row for a single prediction date (all 96 blocks)."""
     import holidays
 
@@ -164,9 +156,7 @@ def _build_features_for_date(
         11: 3,
         12: 0,
     }
-    hour_bucket = lambda h: (
-        0 if h < 6 else (1 if h < 10 else (2 if h < 14 else (3 if h < 18 else 4)))
-    )
+    hour_bucket = lambda h: 0 if h < 6 else (1 if h < 10 else (2 if h < 14 else (3 if h < 18 else 4)))
 
     target_dt = pd.Timestamp(target_date)
     indian_holidays = holidays.India(years=target_date.year)
@@ -226,9 +216,7 @@ def _build_features_for_date(
             for city in CITIES:
                 city_weather = weather[weather["city"] == city]
                 match = city_weather[city_weather["time"] == ts]
-                row[f"{city}_apparent_temp"] = (
-                    float(match["apparent_temp"].values[0]) if len(match) else np.nan
-                )
+                row[f"{city}_apparent_temp"] = float(match["apparent_temp"].values[0]) if len(match) else np.nan
         else:
             row["delhi_apparent_temp"] = np.nan
             row["mumbai_apparent_temp"] = np.nan
@@ -240,9 +228,7 @@ def _build_features_for_date(
 
 # ─── Pydantic Models ────────────────────────────────────────────────────
 class PredictRequest(BaseModel):
-    model_name: str = Field(
-        "xgboost", description="Model name: xgboost, lightgbm, random_forest, ridge"
-    )
+    model_name: str = Field("xgboost", description="Model name: xgboost, lightgbm, random_forest, ridge")
     target_date: date = Field(..., description="Date to predict (YYYY-MM-DD)")
     use_weather: bool = Field(True, description="Use weather features")
 
@@ -314,16 +300,10 @@ def predict(req: PredictRequest):
 
     preds = model.predict(X)
 
-    time_blocks = [
-        f"{h:02d}:{m:02d} - {h:02d}:{m + 15:02d}"
-        for h in range(24)
-        for m in range(0, 60, 15)
-    ]
+    time_blocks = [f"{h:02d}:{m:02d} - {h:02d}:{m + 15:02d}" for h in range(24) for m in range(0, 60, 15)]
 
     predictions = [
-        Prediction(
-            block=i, time_block=time_blocks[i], predicted_mcp=round(float(preds[i]), 2)
-        )
+        Prediction(block=i, time_block=time_blocks[i], predicted_mcp=round(float(preds[i]), 2))
         for i in range(len(preds))
     ]
 
@@ -367,11 +347,7 @@ def predict_range(req: PredictRangeRequest):
         X = features[feature_cols].values
         preds = model.predict(X)
 
-        time_blocks = [
-            f"{h:02d}:{m:02d} - {h:02d}:{m + 15:02d}"
-            for h in range(24)
-            for m in range(0, 60, 15)
-        ]
+        time_blocks = [f"{h:02d}:{m:02d} - {h:02d}:{m + 15:02d}" for h in range(24) for m in range(0, 60, 15)]
 
         for i in range(len(preds)):
             all_preds.append(
@@ -437,9 +413,7 @@ def get_metrics(model_name: str):
             results[label] = df.to_dict(orient="records")[0] if len(df) > 0 else {}
 
     if not results:
-        raise HTTPException(
-            status_code=404, detail=f"No metrics found for model: {model_name}"
-        )
+        raise HTTPException(status_code=404, detail=f"No metrics found for model: {model_name}")
 
     return {"model_name": model_name, "metrics": results}
 

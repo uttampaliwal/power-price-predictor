@@ -28,12 +28,8 @@ def create_report():
         df_raw = pd.read_csv(raw_file)
         df_raw["date"] = pd.to_datetime(df_raw["date"])
         # Sample 1 week of raw data for clarity
-        sample_raw = df_raw[
-            (df_raw["date"] >= "2024-01-01") & (df_raw["date"] <= "2024-01-07")
-        ].copy()
-        sample_raw["datetime"] = pd.to_datetime(
-            sample_raw["date"].astype(str)
-        ) + pd.to_timedelta(
+        sample_raw = df_raw[(df_raw["date"] >= "2024-01-01") & (df_raw["date"] <= "2024-01-07")].copy()
+        sample_raw["datetime"] = pd.to_datetime(sample_raw["date"].astype(str)) + pd.to_timedelta(
             (sample_raw["time_block"].str.split("-").str[0] + ":00").str.strip(),
             errors="coerce",
         )
@@ -76,12 +72,8 @@ def create_report():
 
     # 2. Raw vs Processed Data Sample Visualization
     if not sample_raw.empty:
-        html_content.append(
-            "<div class='card'><h2>1. Raw Data Insights (1 Week Sample: Jan 2024)</h2>"
-        )
-        html_content.append(
-            "<p>Illustrating the true 96-block 15-minute granularity fetched by the new scraper.</p>"
-        )
+        html_content.append("<div class='card'><h2>1. Raw Data Insights (1 Week Sample: Jan 2024)</h2>")
+        html_content.append("<p>Illustrating the true 96-block 15-minute granularity fetched by the new scraper.</p>")
 
         fig_raw = px.line(
             sample_raw,
@@ -89,9 +81,7 @@ def create_report():
             y="mcp_rs_per_mwh",
             title="Actual Market Clearing Price (Rs/MWh)",
         )
-        fig_raw.update_layout(
-            xaxis_title="Date & Time", yaxis_title="MCP (Rs/MWh)", height=400
-        )
+        fig_raw.update_layout(xaxis_title="Date & Time", yaxis_title="MCP (Rs/MWh)", height=400)
         html_content.append(fig_raw.to_html(full_html=False, include_plotlyjs="cdn"))
         html_content.append("</div>")
 
@@ -101,16 +91,12 @@ def create_report():
         # Reorder columns
         cols = ["Model", "RMSE", "MAE", "MAPE", "WAPE", "R2", "AUC_ROC", "F1"]
         df_m = df_metrics[[c for c in cols if c in df_metrics.columns]]
-        html_content.append(
-            df_m.to_html(classes="metric-table", index=False, float_format="%.4f")
-        )
+        html_content.append(df_m.to_html(classes="metric-table", index=False, float_format="%.4f"))
     html_content.append("</div>")
 
     # 4. Graphical Model Comparison (Bar Charts)
     if not df_metrics.empty:
-        html_content.append(
-            "<div class='card'><h2>3. Graphical Performance Summary</h2>"
-        )
+        html_content.append("<div class='card'><h2>3. Graphical Performance Summary</h2>")
 
         fig_comp = make_subplots(
             rows=2,
@@ -181,9 +167,7 @@ def create_report():
 
     # 5. Confusion Matrices
     if cm_dict:
-        html_content.append(
-            "<div class='card'><h2>4. Price Direction Confusion Matrices</h2>"
-        )
+        html_content.append("<div class='card'><h2>4. Price Direction Confusion Matrices</h2>")
         html_content.append(
             "<p>Testing the models' ability to predict whether the price increases by >1% compared to the previous 15-minute block. <i>Class 0: Flat/Down, Class 1: Up.</i></p>"
         )

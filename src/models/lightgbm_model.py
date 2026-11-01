@@ -22,9 +22,7 @@ from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_tab
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "lightgbm")
-PREDS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "predictions", "lightgbm"
-)
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "lightgbm")
 
 
 def load_data():
@@ -106,9 +104,7 @@ def run():
 
     # Save
     model.booster_.save_model(os.path.join(MODELS_DIR, "lightgbm.txt"))
-    pd.DataFrame([{"model": "lightgbm", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False
-    )
+    pd.DataFrame([{"model": "lightgbm", **metrics}]).to_csv(os.path.join(MODELS_DIR, "metrics.csv"), index=False)
     by_season.to_csv(os.path.join(MODELS_DIR, "metrics_by_season.csv"), index=False)
     by_hour.to_csv(os.path.join(MODELS_DIR, "metrics_by_hour.csv"), index=False)
 

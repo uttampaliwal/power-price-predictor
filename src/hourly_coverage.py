@@ -107,11 +107,7 @@ def main():
     print("\n  Computing hourly coverage...")
     hourly = compute_hourly_coverage(test, intervals, alpha=0.10)
     print("\n  Hourly Coverage (LightGBM + SCP):")
-    print(
-        hourly[
-            ["hour", "PICP", "coverage_gap", "mean_width", "mean_price", "n_samples"]
-        ].to_string(index=False)
-    )
+    print(hourly[["hour", "PICP", "coverage_gap", "mean_width", "mean_price", "n_samples"]].to_string(index=False))
 
     # Monthly coverage
     print("\n  Computing monthly coverage...")
@@ -151,10 +147,7 @@ def main():
     ax.bar(
         hours,
         picps,
-        color=[
-            "#4CAF50" if 88 <= p <= 92 else "#FF9800" if p > 92 else "#F44336"
-            for p in picps
-        ],
+        color=["#4CAF50" if 88 <= p <= 92 else "#FF9800" if p > 92 else "#F44336" for p in picps],
     )
     ax.axhline(y=90, color="red", linestyle="--", linewidth=2, label="Target 90%")
     ax.set_xlabel("Hour of Day", fontsize=12)
@@ -172,10 +165,7 @@ def main():
         ax.bar(
             months,
             picps_m,
-            color=[
-                "#4CAF50" if 88 <= p <= 92 else "#FF9800" if p > 92 else "#F44336"
-                for p in picps_m
-            ],
+            color=["#4CAF50" if 88 <= p <= 92 else "#FF9800" if p > 92 else "#F44336" for p in picps_m],
         )
         ax.axhline(y=90, color="red", linestyle="--", linewidth=2, label="Target 90%")
         ax.set_xlabel("Month", fontsize=12)
@@ -187,9 +177,7 @@ def main():
 
     plt.tight_layout()
     plt.savefig(
-        os.path.join(
-            RESULTS_DIR, "..", "..", "paper", "cp_hourly_monthly_coverage.png"
-        ),
+        os.path.join(RESULTS_DIR, "..", "..", "paper", "cp_hourly_monthly_coverage.png"),
         dpi=150,
         bbox_inches="tight",
     )
@@ -197,15 +185,11 @@ def main():
 
     # Summary statistics
     print(f"\n  Overall PICP: {hourly['PICP'].mean():.2f}%")
-    print(
-        f"  Hourly PICP range: {hourly['PICP'].min():.2f}% - {hourly['PICP'].max():.2f}%"
-    )
+    print(f"  Hourly PICP range: {hourly['PICP'].min():.2f}% - {hourly['PICP'].max():.2f}%")
     print(f"  Standard deviation: {hourly['PICP'].std():.2f}%")
 
     if len(monthly) > 0:
-        print(
-            f"  Monthly PICP range: {monthly['PICP'].min():.2f}% - {monthly['PICP'].max():.2f}%"
-        )
+        print(f"  Monthly PICP range: {monthly['PICP'].min():.2f}% - {monthly['PICP'].max():.2f}%")
 
     print(f"\n  Results saved to {RESULTS_DIR}")
     print("Done.")

@@ -58,9 +58,7 @@ def run():
     def add_time_idx(df, start_idx=0):
         df_p = df.copy()
         if "timestamp" not in df_p.columns:
-            df_p["timestamp"] = pd.to_datetime(
-                df_p["date"].astype(str) + " " + df_p["time_block"].astype(str)
-            )
+            df_p["timestamp"] = pd.to_datetime(df_p["date"].astype(str) + " " + df_p["time_block"].astype(str))
         df_p = df_p.sort_values("timestamp").reset_index(drop=True)
         df_p["time_idx"] = np.arange(start_idx, start_idx + len(df_p))
         df_p["group"] = "0"  # single time series
@@ -92,17 +90,11 @@ def run():
         add_encoder_length=True,
     )
 
-    validation = TimeSeriesDataSet.from_dataset(
-        training, train_p, predict=True, stop_randomization=True
-    )
+    validation = TimeSeriesDataSet.from_dataset(training, train_p, predict=True, stop_randomization=True)
 
     batch_size = 64
-    train_dataloader = training.to_dataloader(
-        train=True, batch_size=batch_size, num_workers=0
-    )
-    val_dataloader = validation.to_dataloader(
-        train=False, batch_size=batch_size * 10, num_workers=0
-    )
+    train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+    val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size * 10, num_workers=0)
 
     print("  Training TFT model...")
     tft = TemporalFusionTransformer.from_dataset(
@@ -116,9 +108,7 @@ def run():
         optimizer="Adam",
     )
 
-    early_stop_callback = EarlyStopping(
-        monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min"
-    )
+    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
     lr_logger = pl.callbacks.LearningRateMonitor()
     logger = pl.loggers.TensorBoardLogger("lightning_logs")
 
@@ -156,9 +146,7 @@ def run():
     by_hour = evaluate_by_segment(test_p, y_pred, "hour_bucket")
 
     # Save
-    pd.DataFrame([{"model": "tft", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False
-    )
+    pd.DataFrame([{"model": "tft", **metrics}]).to_csv(os.path.join(MODELS_DIR, "metrics.csv"), index=False)
 
     preds_df = test_p[["date", "time_block", "block", TARGET]].copy()
     preds_df["predicted_mcp"] = y_pred

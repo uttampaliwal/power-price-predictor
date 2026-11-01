@@ -118,16 +118,10 @@ def compute_classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> di
 
     # Direction accuracy (only for elements with valid direction labels, i.e., from index 96 onwards)
     if len(true_dir) > BLOCKS_PER_DAY:
-        dir_mask = ~np.isnan(y_true[BLOCKS_PER_DAY:]) & ~np.isnan(
-            y_pred[BLOCKS_PER_DAY:]
-        )
+        dir_mask = ~np.isnan(y_true[BLOCKS_PER_DAY:]) & ~np.isnan(y_pred[BLOCKS_PER_DAY:])
         if dir_mask.sum() > 0:
             dir_accuracy = round(
-                np.mean(
-                    true_dir[BLOCKS_PER_DAY:][dir_mask]
-                    == pred_dir[BLOCKS_PER_DAY:][dir_mask]
-                )
-                * 100,
+                np.mean(true_dir[BLOCKS_PER_DAY:][dir_mask] == pred_dir[BLOCKS_PER_DAY:][dir_mask]) * 100,
                 4,
             )
         else:
@@ -195,9 +189,7 @@ def evaluate_by_segment(
     df["_pred"] = y_pred
     rows = []
     for seg_val, grp in df.groupby(segment_col):
-        m = compute_regression_metrics(
-            grp["mcp_rs_per_mwh"].values, grp["_pred"].values
-        )
+        m = compute_regression_metrics(grp["mcp_rs_per_mwh"].values, grp["_pred"].values)
         rows.append({"segment": f"{segment_col}={seg_val}", **m})
     # Overall
     overall = compute_regression_metrics(df["mcp_rs_per_mwh"].values, y_pred)

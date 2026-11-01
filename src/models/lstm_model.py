@@ -69,9 +69,7 @@ class DaySequenceDataset(Dataset):
         target_date = self.dates[idx + LOOKBACK_DAYS]
         input_dates = self.dates[idx : idx + LOOKBACK_DAYS]
 
-        x = np.concatenate(
-            [self.daily_blocks[d] for d in input_dates], axis=0
-        )  # (7*96, F)
+        x = np.concatenate([self.daily_blocks[d] for d in input_dates], axis=0)  # (7*96, F)
         y = self.daily_blocks[target_date][:, 0]  # (96,) — MCP col 0
 
         return (
@@ -237,9 +235,7 @@ def run():
 
     # Build datasets / loaders
     train_ds = DaySequenceDataset(train_blocks, train_dates)
-    val_ds = DaySequenceDataset(
-        {**train_blocks, **val_blocks}, sorted(all_train_blocks.keys())
-    )
+    val_ds = DaySequenceDataset({**train_blocks, **val_blocks}, sorted(all_train_blocks.keys()))
     test_ds = DaySequenceDataset(
         {**all_train_blocks, **test_blocks},
         sorted({**all_train_blocks, **test_blocks}.keys()),
@@ -252,9 +248,7 @@ def run():
     n_features = len(LSTM_FEATURE_COLS)
     model = LSTMModel(n_features=n_features, hidden_size=128, n_layers=2).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=5, factor=0.5
-    )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
     criterion = nn.MSELoss()
 
     best_val_loss = float("inf")
@@ -270,9 +264,7 @@ def run():
         scheduler.step(val_loss)
 
         if epoch % 10 == 0 or epoch == 1:
-            print(
-                f"  Epoch {epoch:3d}/{EPOCHS}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}"
-            )
+            print(f"  Epoch {epoch:3d}/{EPOCHS}  train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -281,9 +273,7 @@ def run():
         else:
             patience_ctr += 1
             if patience_ctr >= PATIENCE:
-                print(
-                    f"  Early stopping at epoch {epoch}. Best val_loss={best_val_loss:.4f}"
-                )
+                print(f"  Early stopping at epoch {epoch}. Best val_loss={best_val_loss:.4f}")
                 break
 
     # Load best checkpoint
@@ -310,27 +300,19 @@ def run():
     # Segment evaluation — match test block metadata to predictions
     # Build a flat test_df from test_ds date sequence
     test_seq_dates = sorted({**all_train_blocks, **test_blocks}.keys())
-    test_day_dates = test_seq_dates[LOOKBACK_DAYS:][
-        : len(all_preds) * BATCH_SIZE + BATCH_SIZE
-    ]
+    test_day_dates = test_seq_dates[LOOKBACK_DAYS:][: len(all_preds) * BATCH_SIZE + BATCH_SIZE]
     flat_rows = []
     for i, pred_day in enumerate(test_day_dates[: len(all_preds)]):
         for b, (p, t) in enumerate(
             zip(
-                all_preds[i].flatten()
-                if len(all_preds[i].shape) > 1
-                else [all_preds[i].flatten()],
-                all_true[i].flatten()
-                if len(all_true[i].shape) > 1
-                else [all_true[i].flatten()],
+                all_preds[i].flatten() if len(all_preds[i].shape) > 1 else [all_preds[i].flatten()],
+                all_true[i].flatten() if len(all_true[i].shape) > 1 else [all_true[i].flatten()],
             )
         ):
             flat_rows.append({"date": pred_day, "block": b, "pred": p, "true": t})
 
     # Save
-    pd.DataFrame([{"model": "lstm", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False
-    )
+    pd.DataFrame([{"model": "lstm", **metrics}]).to_csv(os.path.join(MODELS_DIR, "metrics.csv"), index=False)
 
     # Build prediction DataFrame with date/block metadata for benchmark compatibility
     test_seq_dates = sorted({**all_train_blocks, **test_blocks}.keys())

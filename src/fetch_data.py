@@ -41,9 +41,7 @@ def scrape_day(target_date: date) -> pd.DataFrame:
     dt_str = date_to_ddmmyyyy(target_date)
     url = f"{BASE_URL}?interval=ONE_FOURTH_HOUR&dp=SELECT_RANGE&showGraph=false&fromDate={dt_str}&toDate={dt_str}"
 
-    req = urllib.request.Request(
-        url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    )
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
 
     max_retries = 3
     for attempt in range(max_retries):
@@ -57,11 +55,7 @@ def scrape_day(target_date: date) -> pd.DataFrame:
                     continue
 
                 # Exclude summary rows
-                df = df[
-                    ~df["Time Block"]
-                    .astype(str)
-                    .str.contains("Avg|Max|Min|Total", case=False, na=False)
-                ]
+                df = df[~df["Time Block"].astype(str).str.contains("Avg|Max|Min|Total", case=False, na=False)]
 
                 # Drop unwanted 'Hour' column if it exists
                 if "Hour" in df.columns:
@@ -71,14 +65,10 @@ def scrape_day(target_date: date) -> pd.DataFrame:
                 df = df.rename(columns=COLUMNS_MAPPING)
 
                 # Convert Date format
-                df["date"] = pd.to_datetime(
-                    df["date"], format="%d-%m-%Y", errors="coerce"
-                )
+                df["date"] = pd.to_datetime(df["date"], format="%d-%m-%Y", errors="coerce")
 
                 # Convert numerics
-                numeric_cols = [
-                    c for c in df.columns if c not in ("date", "time_block")
-                ]
+                numeric_cols = [c for c in df.columns if c not in ("date", "time_block")]
                 for col in numeric_cols:
                     if df[col].dtype == object:
                         df[col] = df[col].astype(str).str.replace(",", "")
@@ -134,19 +124,13 @@ def fetch_all(start: date, end: date, split: str, overwrite: bool = False):
                 next_date = last_date + timedelta(days=1)
                 year_end = max(d for d in dates_in_year)
                 if next_date > year_end:
-                    print(
-                        f"  [SKIP] {fname} — already up to {last_date}, nothing new to fetch."
-                    )
+                    print(f"  [SKIP] {fname} — already up to {last_date}, nothing new to fetch.")
                     continue
                 # Only fetch from next_date onwards
                 dates_in_year = [d for d in dates_in_year if d >= next_date]
-                print(
-                    f"\n  [APPEND] {fname} — has data up to {last_date}, fetching {len(dates_in_year)} new days..."
-                )
+                print(f"\n  [APPEND] {fname} — has data up to {last_date}, fetching {len(dates_in_year)} new days...")
             else:
-                print(
-                    f"\n  [REFETCH] {fname} exists but is empty, fetching full year {year}..."
-                )
+                print(f"\n  [REFETCH] {fname} exists but is empty, fetching full year {year}...")
         elif overwrite and os.path.exists(fname):
             print(f"\n  [OVERWRITE] Removing {fname} and re-fetching year {year}...")
             os.remove(fname)
@@ -171,9 +155,7 @@ def fetch_all(start: date, end: date, split: str, overwrite: bool = False):
                 existing_df = pd.read_csv(fname, parse_dates=["date"])
                 final_df = pd.concat([existing_df, new_df], ignore_index=True)
                 final_df = final_df.drop_duplicates(subset=["date", "time_block"])
-                final_df = final_df.sort_values(["date", "time_block"]).reset_index(
-                    drop=True
-                )
+                final_df = final_df.sort_values(["date", "time_block"]).reset_index(drop=True)
             else:
                 final_df = new_df
 

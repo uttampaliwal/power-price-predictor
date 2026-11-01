@@ -72,9 +72,7 @@ class TestSplitConformal:
         scp.fit(model, X[500:700], y[500:700])
         result = scp.predict(model, X[700:])
 
-        covered = (y[700:] >= result["lower"].values) & (
-            y[700:] <= result["upper"].values
-        )
+        covered = (y[700:] >= result["lower"].values) & (y[700:] <= result["upper"].values)
         coverage = np.mean(covered)
         # Should be close to 90%
         assert 0.85 < coverage < 0.95
@@ -162,9 +160,7 @@ class TestEvaluateConformal:
             }
         )
         regimes = np.where(y_true > 500, "spike", "normal")
-        result = evaluate_conformal(
-            y_true, intervals, alpha=0.10, regime_labels=regimes
-        )
+        result = evaluate_conformal(y_true, intervals, alpha=0.10, regime_labels=regimes)
 
         assert "regime_normal_PICP" in result
         assert "regime_spike_PICP" in result

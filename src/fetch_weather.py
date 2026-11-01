@@ -51,9 +51,7 @@ def run(start, end, split):
 
     dfs = []
     for city, coords in LOCATIONS.items():
-        df_city = fetch_historical_weather(
-            city, coords["lat"], coords["lon"], start, end
-        )
+        df_city = fetch_historical_weather(city, coords["lat"], coords["lon"], start, end)
         dfs.append(df_city)
 
     # Merge on datetime

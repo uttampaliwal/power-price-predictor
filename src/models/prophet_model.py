@@ -22,9 +22,7 @@ except ImportError:
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "prophet")
-PREDS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "predictions", "prophet"
-)
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "prophet")
 
 TARGET = "mcp_rs_per_mwh"
 
@@ -50,9 +48,7 @@ def run():
         df_p = df.copy()
         # Combine date and time to create a continuous sequence
         if "timestamp" not in df_p.columns:
-            df_p["timestamp"] = pd.to_datetime(
-                df_p["date"].astype(str) + " " + df_p["time_block"].astype(str)
-            )
+            df_p["timestamp"] = pd.to_datetime(df_p["date"].astype(str) + " " + df_p["time_block"].astype(str))
 
         df_prophet = pd.DataFrame({"ds": df_p["timestamp"], "y": df_p[TARGET]})
         return df_prophet, df_p
@@ -96,9 +92,7 @@ def run():
     with open(os.path.join(MODELS_DIR, "prophet.json"), "w") as fout:
         json.dump(model_to_json(model), fout)
 
-    pd.DataFrame([{"model": "prophet", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False
-    )
+    pd.DataFrame([{"model": "prophet", **metrics}]).to_csv(os.path.join(MODELS_DIR, "metrics.csv"), index=False)
     by_season.to_csv(os.path.join(MODELS_DIR, "metrics_by_season.csv"), index=False)
     by_hour.to_csv(os.path.join(MODELS_DIR, "metrics_by_hour.csv"), index=False)
 

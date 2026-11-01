@@ -46,9 +46,7 @@ def log_model_run(model_name: str, use_weather: bool = True):
     weather_str = "with_weather" if use_weather else "no_weather"
 
     base_dir = MODELS_DIR if use_weather else MODELS_NO_WEATHER_DIR
-    pred_dir = os.path.join(
-        PREDS_DIR, f"{model_name}{'_no_weather' if not use_weather else ''}"
-    )
+    pred_dir = os.path.join(PREDS_DIR, f"{model_name}{'_no_weather' if not use_weather else ''}")
 
     # Load metrics
     metrics_path = os.path.join(base_dir, model_name, "metrics.csv")
@@ -184,9 +182,7 @@ def show_experiments():
         m = run.data.metrics
         p = run.data.params
         print(f"  Run: {run.info.run_name}")
-        print(
-            f"    Model: {p.get('model_name', '?')} | Weather: {p.get('use_weather', '?')}"
-        )
+        print(f"    Model: {p.get('model_name', '?')} | Weather: {p.get('use_weather', '?')}")
         print(
             f"    R²={m.get('R2', '?'):.4f}  RMSE={m.get('RMSE', '?'):.1f}  "
             f"WAPE={m.get('WAPE', '?'):.1f}%  AUC={m.get('AUC_ROC', '?')}"
@@ -198,9 +194,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--log-all", action="store_true", help="Log all trained models")
-    group.add_argument(
-        "--log-backtest", action="store_true", help="Log backtest results"
-    )
+    group.add_argument("--log-backtest", action="store_true", help="Log backtest results")
     group.add_argument("--show", action="store_true", help="Show tracked experiments")
     args = parser.parse_args()
 

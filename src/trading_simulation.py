@@ -84,22 +84,14 @@ def strategy_interval_arbitrage(test, intervals, capacity_mw=100):
 
         # P&L from buy opportunities (buy at actual, sell at predicted)
         buy_pnl = (
-            np.sum(
-                (day_pred[buy_mask] - day_true[buy_mask])
-                * capacity_mw
-                * day_scale[buy_mask]
-            )
+            np.sum((day_pred[buy_mask] - day_true[buy_mask]) * capacity_mw * day_scale[buy_mask])
             if buy_mask.any()
             else 0
         )
 
         # P&L from sell opportunities (sell at actual, buy at predicted)
         sell_pnl = (
-            np.sum(
-                (day_true[sell_mask] - day_pred[sell_mask])
-                * capacity_mw
-                * day_scale[sell_mask]
-            )
+            np.sum((day_true[sell_mask] - day_pred[sell_mask]) * capacity_mw * day_scale[sell_mask])
             if sell_mask.any()
             else 0
         )
@@ -233,9 +225,7 @@ def compute_trading_metrics(daily_pnl, capacity_mw=100, name="Strategy"):
         "sharpe_ratio": round(sharpe, 2),
         "win_rate_pct": round(win_rate, 2),
         "max_drawdown_rs": round(max_drawdown, 2),
-        "profit_factor": round(profit_factor, 2)
-        if profit_factor != float("inf")
-        else "inf",
+        "profit_factor": round(profit_factor, 2) if profit_factor != float("inf") else "inf",
         "n_trading_days": n_days,
     }
 

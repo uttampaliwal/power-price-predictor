@@ -47,9 +47,7 @@ def load_predictions(model_name: str, use_weather: bool = True) -> pd.DataFrame:
 def load_actual_prices(split: str = "holdout") -> pd.DataFrame:
     """Load actual DAM prices."""
     raw_dir = os.path.join(DATA_RAW_DIR, split)
-    csvs = sorted(
-        [f for f in os.listdir(raw_dir) if f.startswith("dam_") and f.endswith(".csv")]
-    )
+    csvs = sorted([f for f in os.listdir(raw_dir) if f.startswith("dam_") and f.endswith(".csv")])
     dfs = [pd.read_csv(os.path.join(raw_dir, f), parse_dates=["date"]) for f in csvs]
     df = pd.concat(dfs, ignore_index=True)
     # Add block index from time_block
@@ -59,9 +57,7 @@ def load_actual_prices(split: str = "holdout") -> pd.DataFrame:
 
 
 # ─── Strategy Implementations ───────────────────────────────────────────
-def strategy_arbitrage(
-    preds: pd.DataFrame, actuals: pd.DataFrame, capacity_mw: float = 100.0
-) -> pd.DataFrame:
+def strategy_arbitrage(preds: pd.DataFrame, actuals: pd.DataFrame, capacity_mw: float = 100.0) -> pd.DataFrame:
     """
     Block-shift arbitrage strategy.
     Buy electricity at predicted-cheap blocks, use at predicted-expensive blocks.
@@ -101,9 +97,7 @@ def strategy_arbitrage(
     return pd.DataFrame(daily_pnl)
 
 
-def strategy_directional(
-    preds: pd.DataFrame, actuals: pd.DataFrame, position_size: float = 100.0
-) -> pd.DataFrame:
+def strategy_directional(preds: pd.DataFrame, actuals: pd.DataFrame, position_size: float = 100.0) -> pd.DataFrame:
     """
     Directional trading: go long when model predicts price will rise vs yesterday.
     P&L = position_size * (actual_price_tomorrow - actual_price_today) * signal
@@ -116,22 +110,14 @@ def strategy_directional(
     merged = merged.sort_values(["date", "block"])
 
     # Compute yesterday's actual price per block
-    merged["yesterday_actual"] = merged.groupby("block")["mcp_rs_per_mwh_actual"].shift(
-        1
-    )
+    merged["yesterday_actual"] = merged.groupby("block")["mcp_rs_per_mwh_actual"].shift(1)
     merged = merged.dropna(subset=["yesterday_actual"])
 
     # Signal: predict rise vs yesterday
-    merged["signal"] = (
-        merged["predicted_mcp"] > merged["yesterday_actual"] * 1.01
-    ).astype(int)
+    merged["signal"] = (merged["predicted_mcp"] > merged["yesterday_actual"] * 1.01).astype(int)
 
     # P&L: if signal=1 (long), profit = actual - yesterday_actual; if signal=0, flat
-    merged["pnl"] = (
-        merged["signal"]
-        * (merged["mcp_rs_per_mwh_actual"] - merged["yesterday_actual"])
-        * position_size
-    )
+    merged["pnl"] = merged["signal"] * (merged["mcp_rs_per_mwh_actual"] - merged["yesterday_actual"]) * position_size
 
     daily = (
         merged.groupby("date")
@@ -146,9 +132,7 @@ def strategy_directional(
     return daily
 
 
-def strategy_peak_shaving(
-    preds: pd.DataFrame, actuals: pd.DataFrame, shift_mw: float = 50.0
-) -> pd.DataFrame:
+def strategy_peak_shaving(preds: pd.DataFrame, actuals: pd.DataFrame, shift_mw: float = 50.0) -> pd.DataFrame:
     """
     Peak-shaving: shift load from predicted-peak to predicted-valley blocks.
     Savings = (peak_actual - valley_actual) * shift_mw
@@ -231,9 +215,7 @@ def plot_backtest(results: dict, out_path: str):
         drawdown = running_max - cumulative
 
         axes[0].plot(pnl.index, cumulative, label=name, color=palette[i], linewidth=1.5)
-        axes[1].fill_between(
-            pnl.index, -drawdown, alpha=0.3, color=palette[i], label=name
-        )
+        axes[1].fill_between(pnl.index, -drawdown, alpha=0.3, color=palette[i], label=name)
 
     axes[0].set_ylabel("Cumulative P&L (Rs)")
     axes[0].set_title("Backtest: Cumulative P&L by Strategy")
@@ -260,9 +242,7 @@ def run_backtest(
     end_date: str = None,
 ):
     print(f"\n{'=' * 60}")
-    print(
-        f"  BACKTEST: {model_name} ({'with weather' if use_weather else 'no weather'})"
-    )
+    print(f"  BACKTEST: {model_name} ({'with weather' if use_weather else 'no weather'})")
     print(f"{'=' * 60}\n")
 
     preds = load_predictions(model_name, use_weather)
@@ -273,9 +253,7 @@ def run_backtest(
     if end_date:
         preds = preds[preds["date"] <= end_date]
 
-    print(
-        f"  Predictions: {len(preds)} rows, {preds['date'].min().date()} → {preds['date'].max().date()}"
-    )
+    print(f"  Predictions: {len(preds)} rows, {preds['date'].min().date()} → {preds['date'].max().date()}")
 
     # Run strategies
     arb_daily = strategy_arbitrage(preds, actuals)
@@ -304,9 +282,7 @@ def run_backtest(
 
     # Print summary
     print(f"\n{'─' * 60}")
-    print(
-        f"  {'Strategy':<25} {'Total P&L':>12} {'Sharpe':>8} {'Max DD':>10} {'Win%':>6}"
-    )
+    print(f"  {'Strategy':<25} {'Total P&L':>12} {'Sharpe':>8} {'Max DD':>10} {'Win%':>6}")
     print(f"{'─' * 60}")
     for name, data in results.items():
         m = data["metrics"]
@@ -323,9 +299,7 @@ def run_backtest(
         safe_name = name.lower().replace(" ", "_").replace("-", "_")
         data["daily_pnl"].to_csv(os.path.join(out_dir, f"{safe_name}_daily.csv"))
 
-    summary = pd.DataFrame(
-        [{"strategy": name, **data["metrics"]} for name, data in results.items()]
-    )
+    summary = pd.DataFrame([{"strategy": name, **data["metrics"]} for name, data in results.items()])
     summary.to_csv(os.path.join(out_dir, "backtest_summary.csv"), index=False)
 
     plot_backtest(results, os.path.join(out_dir, "backtest_plot.png"))

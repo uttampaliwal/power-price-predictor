@@ -87,9 +87,7 @@ def run():
 
     # Save
     joblib.dump(pipe, os.path.join(MODELS_DIR, "ridge_pipeline.pkl"))
-    pd.DataFrame([{"model": "ridge", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False
-    )
+    pd.DataFrame([{"model": "ridge", **metrics}]).to_csv(os.path.join(MODELS_DIR, "metrics.csv"), index=False)
     by_season.to_csv(os.path.join(MODELS_DIR, "metrics_by_season.csv"), index=False)
     by_hour.to_csv(os.path.join(MODELS_DIR, "metrics_by_hour.csv"), index=False)
 

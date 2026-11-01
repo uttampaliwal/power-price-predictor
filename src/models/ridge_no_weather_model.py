@@ -24,21 +24,13 @@ from config import TARGET_COL as TARGET
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
-MODELS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "models_no_weather", "ridge"
-)
-PREDS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "predictions", "ridge_no_weather"
-)
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models_no_weather", "ridge")
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "ridge_no_weather")
 
 
 def load_data():
-    train = pd.read_parquet(
-        os.path.join(DATA_DIR, "training_features_no_weather.parquet")
-    )
-    test = pd.read_parquet(
-        os.path.join(DATA_DIR, "holdout_features_no_weather.parquet")
-    )
+    train = pd.read_parquet(os.path.join(DATA_DIR, "training_features_no_weather.parquet"))
+    test = pd.read_parquet(os.path.join(DATA_DIR, "holdout_features_no_weather.parquet"))
     return train, test
 
 

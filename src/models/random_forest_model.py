@@ -22,12 +22,8 @@ from config import TARGET_COL as TARGET
 from evaluate import compute_all_metrics, evaluate_by_segment, print_metrics_table
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
-MODELS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "models", "random_forest"
-)
-PREDS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "predictions", "random_forest"
-)
+MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "models", "random_forest")
+PREDS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "predictions", "random_forest")
 
 
 def load_data():
@@ -95,9 +91,7 @@ def run():
 
     # Save
     joblib.dump(model, os.path.join(MODELS_DIR, "random_forest.pkl"))
-    pd.DataFrame([{"model": "random_forest", **metrics}]).to_csv(
-        os.path.join(MODELS_DIR, "metrics.csv"), index=False
-    )
+    pd.DataFrame([{"model": "random_forest", **metrics}]).to_csv(os.path.join(MODELS_DIR, "metrics.csv"), index=False)
     by_season.to_csv(os.path.join(MODELS_DIR, "metrics_by_season.csv"), index=False)
     by_hour.to_csv(os.path.join(MODELS_DIR, "metrics_by_hour.csv"), index=False)
 
