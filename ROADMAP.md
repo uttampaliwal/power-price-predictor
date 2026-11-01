@@ -25,7 +25,7 @@
 
 ## Phase 4 — Engineering maturity
 
-- [ ] Merge `*_no_weather` trainer twins into one parameterized script (config-driven output dirs)
+- [x] Merge `*_no_weather` trainer twins into one parameterized script — done 2026-11 (user-approved): the four copy-twins (xgboost/lightgbm/random_forest/ridge) are gone; each `src/models/<name>_model.py` takes `--no-weather`, produces the exact same output layout/artifact names/labels as the old twins (`models_no_weather/<name>`, `<name>_no_weather.*`, `models/"model": "<name>_no_weather"`, `predictions/<name>_no_weather/`), and `app.py` shells out to the unified script + flag. Hyperparameters/seeds unchanged (`random_state=42`).
 - [ ] Move LSTM/Prophet/TFT scaffolding to `src/experimental/` (or remove)
 - [ ] Retire `src/api.py` (v1) — port anything still used into v2 and delete
 - [ ] Split `app.py` into an `app/` package (pages/, components/, orchestration/)

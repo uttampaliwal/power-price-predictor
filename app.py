@@ -1161,16 +1161,16 @@ elif page == "Data Management":
             python = sys.executable
             for model_name in selected_train_models:
                 with st.status(f"Training {model_name} ({model_label})...", expanded=True) as status:
-                    if train_with_weather:
-                        script = os.path.join(SRC_DIR, "models", f"{model_name}_model.py")
-                    else:
-                        script = os.path.join(SRC_DIR, "models", f"{model_name}_no_weather_model.py")
-                    
+                    script = os.path.join(SRC_DIR, "models", f"{model_name}_model.py")
+
                     if not os.path.exists(script):
                         status.update(label=f"❌ Script not found: {os.path.basename(script)}", state="error")
                         continue
-                    
-                    ok = _run_pipeline_cmd([python, script], st)
+
+                    cmd = [python, script]
+                    if not train_with_weather:
+                        cmd.append("--no-weather")
+                    ok = _run_pipeline_cmd(cmd, st)
                     if ok:
                         status.update(label=f"✅ {model_name} trained! ({model_label})", state="complete")
                     else:
